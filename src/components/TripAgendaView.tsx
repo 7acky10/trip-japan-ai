@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Trip, ItineraryItem, DayTab } from '../types';
 import { formatMinutesToTime } from '../utils';
 import { MapPin, Map, Check, Trash2, Calendar, Clipboard, Compass, ExternalLink, Ticket, Coins, Clock } from 'lucide-react';
@@ -10,6 +10,7 @@ interface TripAgendaViewProps {
   onItemClick: (item: ItineraryItem) => void;
   onTransitClick?: (item: ItineraryItem) => void;
   colorPreset: string;
+  activeDate?: string;
 }
 
 export default function TripAgendaView({
@@ -18,8 +19,22 @@ export default function TripAgendaView({
   items,
   onItemClick,
   onTransitClick,
-  colorPreset
+  colorPreset,
+  activeDate
 }: TripAgendaViewProps) {
+
+  // Auto scroll to activeDate day section when activeDate changes or on view mount
+  useEffect(() => {
+    if (activeDate) {
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`agenda-day-${activeDate}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeDate]);
   
   // Calculate total expense
   const totalYen = items.filter(item => (item.transitCurrency || '¥') === '¥').reduce((sum, item) => sum + (item.transitCost || 0), 0);
@@ -48,35 +63,6 @@ export default function TripAgendaView({
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto px-4 pb-12 animate-fade-in text-[#e0e0e0]">
-      
-      {/* Dynamic Trip Statistics Overview */}
-      <div className="bg-[#121214] border border-white/5 rounded-2xl shadow-sm p-4.5 grid grid-cols-2 gap-4">
-        <div className="bg-[#1e1e22]/80 border border-white/5 p-3 rounded-xl flex items-center space-x-3">
-          <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
-            <Coins className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-[#8a8a8e]">總路程公車電車費</p>
-            <div className="text-sm sm:text-base font-extrabold text-white leading-tight">
-              {totalYen > 0 && `¥ ${totalYen.toLocaleString()}`}
-              {totalYen > 0 && totalNT > 0 && <span className="text-xs text-gray-400 block sm:inline sm:mx-1.5">+</span>}
-              {(totalNT > 0 || (totalYen === 0 && totalNT === 0)) && `NT$ ${totalNT.toLocaleString()}`}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#1e1e22]/80 border border-white/5 p-3 rounded-xl flex items-center space-x-3">
-          <div className="p-2.5 bg-[#A7C7E7]/10 text-[#A7C7E7] rounded-lg">
-            <Ticket className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-[#8a8a8e]">已預定席位個數</p>
-            <p className="text-lg font-extrabold text-white">
-              {totalReservedCount} / {items.length} 處
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Main Days Agenda */}
       <div className="space-y-6">
@@ -110,7 +96,7 @@ export default function TripAgendaView({
             : [];
 
           return (
-            <div key={day.dateString} className="space-y-3">
+            <div key={day.dateString} id={`agenda-day-${day.dateString}`} className="space-y-3">
               {/* Day title label */}
               <div className="flex items-center space-x-3 sticky top-0 bg-[#0a0a0c]/90 py-2.5 backdrop-blur-xs z-10 font-bold">
                 <span className={`px-3 py-1 font-extrabold text-xs rounded-full uppercase border ${getThemeBg(colorPreset)}`}>
@@ -135,6 +121,45 @@ export default function TripAgendaView({
 
                     return (
                       <div key={item.id} className="space-y-3">
+                        {/* Transit section info shown in agenda road list BEFORE agenda card */}
+                        {item.transitMode !== 'none' && (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTransitClick?.(item);
+                            }}
+                            className="ml-4 flex items-center justify-between p-2 px-3 bg-[#1e1e22] hover:bg-emerald-500/5 hover:border-emerald-500/20 active:scale-[0.99] rounded-lg border border-dashed border-emerald-500/15 text-xs text-left cursor-pointer transition duration-150"
+                          >
+                            <div className="flex items-center space-x-2 text-emerald-300">
+                              <span className="p-1 bg-[#121214] rounded border border-white/5">
+                                {item.transitMode === 'train' && '🚇'}
+                                {item.transitMode === 'bus' && '🚌'}
+                                {item.transitMode === 'walk' && '🚶'}
+                                {item.transitMode === 'taxi' && '🚖'}
+                                {item.transitMode === 'flight' && '✈️'}
+                                {item.transitMode === 'transit' && '🗺️'}
+                              </span>
+                              <span className="font-medium truncate max-w-[140px] sm:max-w-xs">{item.transitDetails || '交通'}</span>
+                              <span className="text-emerald-400 font-light text-[10px]">{item.transitDuration} 分鐘</span>
+                            </div>
+
+                            <div className="flex items-center space-x-1.5 font-semibold text-emerald-300 shrink-0 text-[11px]">
+                              <span>{(item.transitCurrency === '$' ? 'NT$' : item.transitCurrency || '¥')} {item.transitCost}</span>
+                              {item.googleMapsUrl && (
+                                <a
+                                  href={item.googleMapsUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-1 hover:bg-white/10 rounded transition text-emerald-400"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Event list card */}
                         <div 
                           onClick={() => onItemClick(item)}
@@ -189,45 +214,6 @@ export default function TripAgendaView({
                             </div>
                           )}
                         </div>
-
-                        {/* Transit section info shown in agenda road list */}
-                        {item.transitMode !== 'none' && (
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onTransitClick?.(item);
-                            }}
-                            className="ml-4 flex items-center justify-between p-2 px-3 bg-emerald-500/5 hover:bg-emerald-500/10 active:scale-[0.99] rounded-lg border border-dashed border-emerald-500/15 text-xs text-left cursor-pointer transition duration-150"
-                          >
-                            <div className="flex items-center space-x-2 text-emerald-300">
-                              <span className="p-1 bg-[#121214] rounded border border-white/5">
-                                {item.transitMode === 'train' && '🚇'}
-                                {item.transitMode === 'bus' && '🚌'}
-                                {item.transitMode === 'walk' && '🚶'}
-                                {item.transitMode === 'taxi' && '🚖'}
-                                {item.transitMode === 'flight' && '✈️'}
-                                {item.transitMode === 'transit' && '🗺️'}
-                              </span>
-                              <span className="font-medium truncate max-w-[140px] sm:max-w-xs">{item.transitDetails || '移動中'}</span>
-                              <span className="text-emerald-400 font-light text-[10px]">⏱️ {item.transitDuration} 分鐘</span>
-                            </div>
-
-                            <div className="flex items-center space-x-1.5 font-semibold text-emerald-300 shrink-0 text-[11px]">
-                              <span>{(item.transitCurrency === '$' ? 'NT$' : item.transitCurrency || '¥')} {item.transitCost}</span>
-                              {item.googleMapsUrl && (
-                                <a
-                                  href={item.googleMapsUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1 hover:bg-white/10 rounded transition text-emerald-400"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -256,7 +242,7 @@ export default function TripAgendaView({
                             <span className="bg-indigo-500/25 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded font-bold mr-1.5">跨夜交通</span>
                             <span className="font-bold text-white text-xs mr-2">{tomorrowItem.transitDetails || '移動中'}</span>
                             <p className="text-[10px] text-gray-400 mt-0.5">
-                              ⏱️ {duration} 分鐘 • 預計於 {formatMinutesToTime(transitStartMinsToday)} 出發，跨夜至隔日 {formatMinutesToTime(tomorrowItem.startMinutes)} 抵達 {tomorrowItem.title}
+                              {duration} 分鐘 • 預計於 {formatMinutesToTime(transitStartMinsToday)} 出發，跨夜至隔日 {formatMinutesToTime(tomorrowItem.startMinutes)} 接到 {tomorrowItem.title}
                             </p>
                           </div>
                         </div>

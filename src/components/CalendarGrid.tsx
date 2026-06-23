@@ -307,7 +307,7 @@ export default function CalendarGrid({
                         {displayTitle}
                       </p>
                       <p className="text-[8px] sm:text-[10px] text-emerald-400/80">
-                        ⏱️ {duration} 分鐘 {originalTransitStart < 0 && `(本日路程 ${heightPos} 分鐘)`}
+                         {duration} 分鐘 {originalTransitStart < 0 && `(本日路程 ${heightPos} 分鐘)`}
                       </p>
                     </div>
                   </div>
@@ -363,7 +363,7 @@ export default function CalendarGrid({
                         {nextItem.transitDetails || '移動中'}
                       </p>
                       <p className="text-[8px] sm:text-[10px] text-indigo-400/80">
-                        ⏱️ {duration} 分鐘 (本日段 {heightPos} 分鐘，跨日抵達 {nextItem.title})
+                        {duration} 分鐘 (本日 {heightPos} 分鐘，接到隔日的 {nextItem.title})
                       </p>
                     </div>
                   </div>

@@ -243,15 +243,25 @@ export default function App() {
     localStorage.setItem(LOCAL_STORAGE_ITEMS_KEY, JSON.stringify(updatedItems));
   };
 
+  // Helper to get local date string yyyy-mm-dd
+  const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${date}`;
+  };
+
   // Initialize and load data from LocalStorage
   useEffect(() => {
     const loadedTrips = localStorage.getItem(LOCAL_STORAGE_TRIPS_KEY);
     const loadedItems = localStorage.getItem(LOCAL_STORAGE_ITEMS_KEY);
 
+    let parsedTrips: Trip[] = [];
     if (loadedTrips) {
       try {
-        const parsed = JSON.parse(loadedTrips) as Trip[];
-        setTrips(parsed);
+        parsedTrips = JSON.parse(loadedTrips) as Trip[];
+        setTrips(parsedTrips);
       } catch (e) {
         console.error('Failed to parse saved trips data from LocalStorage:', e);
       }
@@ -265,7 +275,32 @@ export default function App() {
         console.error('Failed to parse saved itinerary items from LocalStorage:', e);
       }
     }
+
+    // Auto-select the first trip on load if available
+    if (parsedTrips.length > 0) {
+      setCurrentTrip(parsedTrips[0]);
+    }
   }, []);
+
+  // Monitor currentTrip change to pre-select correct activeDate (today's date if within trip range)
+  useEffect(() => {
+    if (currentTrip) {
+      const todayStr = getLocalDateString();
+      if (todayStr >= currentTrip.startDate && todayStr <= currentTrip.endDate) {
+        setActiveDate(todayStr);
+        setViewMode('calendar'); // 開啟網頁時直接跳到當天的日曆時段
+      } else {
+        // If today is not in the trip, default to the trip's starting date
+        const days = generateDaysList(currentTrip.startDate, currentTrip.endDate);
+        const isValidActiveDate = days.some(day => day.dateString === activeDate);
+        if (!activeDate || !isValidActiveDate) {
+          setActiveDate(currentTrip.startDate);
+        }
+      }
+    } else {
+      setActiveDate('');
+    }
+  }, [currentTrip]);
 
   // Sync state to LocalStorage
   const saveToLocalStorage = (allTrips: Trip[], allItems: ItineraryItem[]) => {
@@ -566,7 +601,14 @@ export default function App() {
                     <span>日曆時段</span>
                   </button>
                   <button
-                    onClick={() => setViewMode('agenda')}
+                    onClick={() => {
+                      setViewMode('agenda');
+                      // 點選總覽路引的時候也要滑動到當天的位置 (若今日期在行程區間中)
+                      const todayStr = getLocalDateString();
+                      if (currentTrip && todayStr >= currentTrip.startDate && todayStr <= currentTrip.endDate) {
+                        setActiveDate(todayStr);
+                      }
+                    }}
                     className={`flex items-center space-x-1 px-3 py-1.5 text-xs font-bold rounded-md transition ${
                       viewMode === 'agenda' 
                         ? 'bg-[#A7C7E7] text-black shadow-md font-bold' 
@@ -599,7 +641,9 @@ export default function App() {
                   return (
                     <button
                       key={day.dateString}
-                      onClick={() => setActiveDate(day.dateString)}
+                      onClick={() => {
+                        setActiveDate(day.dateString);
+                      }}
                       className={`flex flex-col items-center justify-center p-2 px-3.5 rounded-xl shrink-0 text-center transition min-w-[62px] ${
                         isActive
                           ? 'bg-[#A7C7E7] text-black font-extrabold shadow-md'
@@ -643,6 +687,7 @@ export default function App() {
                   onItemClick={(item) => setEditingItem(item)}
                   onTransitClick={(item) => setViewingItemDetail(item)}
                   colorPreset={currentTrip.colorPreset}
+                  activeDate={activeDate}
                 />
               )}
             </div>

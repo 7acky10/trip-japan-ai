@@ -424,7 +424,7 @@ export default function ItineraryItemEditor({
 
                       <div>
                         <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">
-                          預估票價 (當地幣)
+                          預估票價
                         </label>
                         <div className="relative flex items-center">
                           <button
@@ -474,7 +474,7 @@ export default function ItineraryItemEditor({
                       <p className="text-xs font-mono text-gray-300">
                         {transitDetails || "未輸入完整航班資訊"}
                         {transitDuration ? ` (${transitDuration} 分鐘)` : ""}
-                        {transitCost ? ` | 費: ${transitCurrency}${transitCost}` : ""}
+                        {transitCost ? ` | ${transitCurrency}${transitCost}` : ""}
                       </p>
                     </div>
                   </div>
@@ -543,7 +543,7 @@ export default function ItineraryItemEditor({
 
                         <div>
                           <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
-                            交通費用 (當地貨幣)
+                            交通費用
                           </label>
                           <div className="relative flex items-center">
                             <button
