@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "Trip": {
+      "title": "Trip",
+      "description": "A travel planning trip containing metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "colorPreset": { "type": "string" }
+      },
+      "required": ["id", "name", "startDate", "endDate", "createdAt"]
+    },
+    "ItineraryItem": {
+      "title": "ItineraryItem",
+      "description": "An itinerary event or place on a specific trip day",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tripId": { "type": "string" },
+        "date": { "type": "string" },
+        "title": { "type": "string" },
+        "location": { "type": "string" },
+        "startMinutes": { "type": "number" },
+        "endMinutes": { "type": "number" },
+        "isReserved": { "type": "boolean" },
+        "reservationTime": { "type": "string" },
+        "googleMapsRoute": { "type": "string" },
+        "googleMapsUrl": { "type": "string" },
+        "transitMode": { "type": "string" },
+        "transitCost": { "type": "number" },
+        "transitDuration": { "type": "number" },
+        "transitDetails": { "type": "string" },
+        "notes": { "type": "string" },
+        "isHotel": { "type": "boolean" }
+      },
+      "required": ["id", "tripId", "date", "title", "startMinutes", "endMinutes"]
+    }
+  },
+  "firestore": {
+    "trips/{tripId}": {
+      "schema": "Trip",
+      "description": "Trips shared in cloud"
+    },
+    "trips/{tripId}/items/{itemId}": {
+      "schema": "ItineraryItem",
+      "description": "Itinerary items of a trip"
+    }
+  }
+}

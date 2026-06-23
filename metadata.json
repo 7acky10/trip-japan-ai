@@ -1,0 +1,6 @@
+{
+  "name": "Travel Itinerary Route Planner",
+  "description": "針對一到兩週短期旅行的 Google Calendar 風格日程與大眾運輸路線規劃工具，支援行動裝置拖曳、時段調整與交通費用統計。",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
