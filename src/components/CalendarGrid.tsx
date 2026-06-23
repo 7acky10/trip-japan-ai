@@ -5,6 +5,8 @@ import { MapPin, Clock, Train, Bus, Car, Footprints, Navigation, CheckCircle2, A
 
 interface CalendarGridProps {
   items: ItineraryItem[]; // already filtered for the current date
+  activeDate?: string;
+  nextDayTransitItems?: ItineraryItem[];
   onItemClick: (item: ItineraryItem) => void;
   onTransitClick?: (item: ItineraryItem) => void;
   onItemTimeUpdate: (id: string, startMins: number, endMins: number) => void;
@@ -17,6 +19,8 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, i) => i);
 
 export default function CalendarGrid({
   items,
+  activeDate,
+  nextDayTransitItems = [],
   onItemClick,
   onTransitClick,
   onItemTimeUpdate,
@@ -92,6 +96,12 @@ export default function CalendarGrid({
     actionType: 'drag' | 'resize-top' | 'resize-bottom'
   ) => {
     e.stopPropagation();
+
+    // Disable dragging/resizing on items continued from yesterday or cross-overnight items
+    const isContinuedFromYesterday = activeDate && item.date !== activeDate;
+    const isCrossOvernightItem = item.endMinutes > 1440;
+    if (isContinuedFromYesterday || isCrossOvernightItem) return;
+
     // Use setPointerCapture to track smooth dragging across borders
     e.currentTarget.setPointerCapture(e.pointerId);
 
@@ -262,10 +272,21 @@ export default function CalendarGrid({
               // Top positioning of the transit card. We can display it in the gap preceding this current item!
               // Duration of travel in minutes determines height of travel block
               const duration = currItem.transitDuration || 20; 
-              // We target starting travel in the gap so it lands exactly at currItem.startMinutes
-              const transitStart = Math.max(0, currItem.startMinutes - duration);
-              const topPos = transitStart;
-              const heightPos = duration;
+              
+              const originalTransitStart = currItem.startMinutes - duration;
+              let topPos = originalTransitStart;
+              let heightPos = duration;
+              let displayTitle = currItem.transitDetails || '移動中';
+
+              if (originalTransitStart < 0) {
+                // If it starts on the previous day, clamp it to start at 0 (midnight)
+                // and the height on this day is exactly its end minutes on this day (currItem.startMinutes).
+                topPos = 0;
+                heightPos = currItem.startMinutes;
+                displayTitle = `(跨夜續) ${currItem.transitDetails || '移動中'}`;
+              }
+
+              if (heightPos <= 0) return null; // No portion to show on this day
 
               return (
                 <div
@@ -283,10 +304,10 @@ export default function CalendarGrid({
                     </span>
                     <div className="overflow-hidden">
                       <p className="text-[10px] sm:text-xs font-semibold text-emerald-300 truncate">
-                        {currItem.transitDetails || '移動中'}
+                        {displayTitle}
                       </p>
                       <p className="text-[8px] sm:text-[10px] text-emerald-400/80">
-                        ⏱️ {duration} 分鐘
+                        ⏱️ {duration} 分鐘 {originalTransitStart < 0 && `(本日路程 ${heightPos} 分鐘)`}
                       </p>
                     </div>
                   </div>
@@ -311,13 +332,73 @@ export default function CalendarGrid({
               );
             })}
 
+            {/* Render Cross-overnight Transits from Next Day on the Active (Previous) Day */}
+            {nextDayTransitItems.map((nextItem) => {
+              const duration = nextItem.transitDuration || 20;
+              const originalTransitStart = nextItem.startMinutes - duration;
+              
+              // Starts today at 1440 + originalTransitStart and ends at 1440 (midnight)
+              const topPos = 1440 + originalTransitStart;
+              const heightPos = -originalTransitStart; // which is 1440 - topPos = duration - nextItem.startMinutes
+
+              if (heightPos <= 0) return null;
+
+              return (
+                <div
+                  key={`transit-nextday-crossing-grid-${nextItem.id}`}
+                  onClick={() => onTransitClick?.(nextItem)}
+                  className="absolute left-2 right-2 sm:left-4 sm:right-4 z-10 flex items-center justify-between border border-dashed border-indigo-500/35 bg-indigo-500/5 hover:bg-indigo-500/10 cursor-pointer active:scale-[0.99] rounded-xl px-3 transition shadow-3xs"
+                  style={{
+                    top: `${topPos}px`,
+                    height: `${heightPos}px`,
+                  }}
+                >
+                  <div className="flex items-center space-x-1.5 sm:space-x-2.5 overflow-hidden">
+                    <span className="p-1 bg-[#121214] rounded-md border border-indigo-500/25 shadow-3xs">
+                      {getTransitIcon(nextItem.transitMode)}
+                    </span>
+                    <div className="overflow-hidden">
+                      <p className="text-[10px] sm:text-xs font-semibold text-indigo-300 truncate">
+                        <span className="bg-indigo-500/20 text-indigo-200 text-[8px] px-1 py-0.5 rounded font-bold mr-1">跨夜交通</span>
+                        {nextItem.transitDetails || '移動中'}
+                      </p>
+                      <p className="text-[8px] sm:text-[10px] text-indigo-400/80">
+                        ⏱️ {duration} 分鐘 (本日段 {heightPos} 分鐘，跨日抵達 {nextItem.title})
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] sm:text-xs font-extrabold text-indigo-300 bg-[#1e1e22]/80 border border-indigo-500/20 px-1.5 py-0.5 rounded">
+                      {(nextItem.transitCurrency === '$' ? 'NT$' : nextItem.transitCurrency || '¥')} {nextItem.transitCost || 0}
+                    </span>
+                    {nextItem.googleMapsUrl && (
+                      <a 
+                      href={nextItem.googleMapsUrl} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="ml-1 inline-flex items-center p-0.5 hover:bg-white/10 rounded transition text-indigo-400"
+                        title="開啟預排好的交通路線"
+                      >
+                        <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
             {/* Render Calendar Events (Itinerary Cards) */}
             {items.map((item) => {
               // Calculate live display coordinates
               const isEventDragging = activeItemId === item.id;
+              const isContinuedFromYesterday = activeDate && item.date !== activeDate;
+              const isCrossOvernightItem = item.endMinutes > 1440;
               
-              let displayStart = item.startMinutes;
-              let displayEnd = item.endMinutes;
+              let displayStart = isContinuedFromYesterday ? 0 : item.startMinutes;
+              let displayEnd = isContinuedFromYesterday 
+                ? Math.min(1440, item.endMinutes - 1440) 
+                : Math.min(1440, item.endMinutes);
 
               if (isEventDragging && activeAction) {
                 if (activeAction === 'drag') {
@@ -362,15 +443,17 @@ export default function CalendarGrid({
                 >
                   
                   {/* Long-press Top Edge Resize Handle */}
-                  <div
-                    className="absolute -top-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
-                    onPointerDown={(e) => handlePointerDown(e, item, 'resize-top')}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    title="滑動調整開始時間"
-                  >
-                    <div className="w-12 h-1 bg-[#A7C7E7]/0 group-hover:bg-[#A7C7E7] rounded-full transition-all" />
-                  </div>
+                  {(!isContinuedFromYesterday && !isCrossOvernightItem) && (
+                    <div
+                      className="absolute -top-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
+                      onPointerDown={(e) => handlePointerDown(e, item, 'resize-top')}
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      title="滑動調整開始時間"
+                    >
+                      <div className="w-12 h-1 bg-[#A7C7E7]/0 group-hover:bg-[#A7C7E7] rounded-full transition-all" />
+                    </div>
+                  )}
 
                   {/* Standard Main Drag Body Handle (Pointer interactions) */}
                   <div 
@@ -383,10 +466,11 @@ export default function CalendarGrid({
                       <div className="flex items-center justify-between h-full overflow-hidden text-[11px] leading-tight font-medium">
                         <span className="truncate max-w-[65%] text-white font-semibold flex items-center gap-1">
                           {item.isReserved && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" title="已預約" />}
+                          {isContinuedFromYesterday && <span className="bg-indigo-500/30 text-indigo-300 text-[9px] px-1 rounded scale-90">跨夜</span>}
                           {item.title}
                         </span>
                         <span className="font-mono text-[10px] shrink-0 text-gray-400">
-                          {formatMinutesToTime(displayStart)}~{formatMinutesToTime(displayEnd)}
+                          {formatMinutesToTime(item.startMinutes)}~{formatMinutesToTime(item.endMinutes, true)}
                         </span>
                       </div>
                     ) : (
@@ -394,11 +478,12 @@ export default function CalendarGrid({
                         <div>
                           {/* Title & Hour Range */}
                           <div className="flex items-start justify-between gap-1">
-                            <h4 className="font-bold text-[13px] leading-snug tracking-tight text-white truncate">
+                            <h4 className="font-bold text-[13px] leading-snug tracking-tight text-white truncate flex items-center gap-1.5">
+                              {isContinuedFromYesterday && <span className="bg-indigo-550/30 text-indigo-300 text-[10px] px-1.5 py-0.5 rounded-md shrink-0 border border-indigo-500/10">跨夜延續</span>}
                               {item.title}
                             </h4>
                             <span className="text-[10px] font-mono text-gray-300 bg-black/25 px-1 py-0.5 rounded shrink-0">
-                              {formatMinutesToTime(displayStart)} - {formatMinutesToTime(displayEnd)}
+                              {formatMinutesToTime(item.startMinutes)} - {formatMinutesToTime(item.endMinutes, true)}
                             </span>
                           </div>
 
@@ -435,15 +520,17 @@ export default function CalendarGrid({
                   </div>
 
                   {/* Long-press Bottom Edge Resize Handle */}
-                  <div
-                    className="absolute -bottom-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
-                    onPointerDown={(e) => handlePointerDown(e, item, 'resize-bottom')}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    title="滑動調整結束時間"
-                  >
-                    <div className="w-12 h-1 bg-[#A7C7E7]/0 group-hover:bg-[#A7C7E7] rounded-full transition-all" />
-                  </div>
+                  {(!isContinuedFromYesterday && !isCrossOvernightItem) && (
+                    <div
+                      className="absolute -bottom-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
+                      onPointerDown={(e) => handlePointerDown(e, item, 'resize-bottom')}
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      title="滑動調整結束時間"
+                    >
+                      <div className="w-12 h-1 bg-[#A7C7E7]/0 group-hover:bg-[#A7C7E7] rounded-full transition-all" />
+                    </div>
+                  )}
 
                 </div>
               );

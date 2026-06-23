@@ -1,20 +1,23 @@
 import { DayTab, TransitMode } from './types';
 
-// Convert minutes from midnight (0–1440) to HH:MM format
-export function formatMinutesToTime(minutes: number): string {
-  const normalized = Math.max(0, Math.min(1439, minutes));
+// Convert minutes from midnight (0–1440+) to HH:MM format (supports overnight)
+export function formatMinutesToTime(minutes: number, showNextDayPrefix = false): string {
+  const isNextDay = minutes >= 1440;
+  const normalized = Math.max(0, minutes % 1440);
   const hours = Math.floor(normalized / 60);
   const mins = Math.floor(normalized % 60);
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  const timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  return isNextDay && showNextDayPrefix ? `翌日 ${timeStr}` : timeStr;
 }
 
 // Convert "HH:MM" format string to minutes from midnight
 export function parseTimeToMinutes(timeString: string): number {
   if (!timeString) return 0;
-  const [hStr, mStr] = timeString.split(':');
+  const cleanStr = timeString.replace('翌日 ', '');
+  const [hStr, mStr] = cleanStr.split(':');
   const h = parseInt(hStr, 10) || 0;
   const m = parseInt(mStr, 10) || 0;
-  return Math.min(1439, Math.max(0, h * 60 + m));
+  return Math.min(2879, Math.max(0, h * 60 + m));
 }
 
 // Generate the days list between start and end date (supports up to 14 days)

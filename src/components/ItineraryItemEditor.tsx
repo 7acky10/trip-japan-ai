@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ItineraryItem, TransitMode } from '../types';
 import { parseTimeToMinutes, formatMinutesToTime, generateMockTransitRoutes, makeGoogleMapsDirUrl } from '../utils';
-import { X, MapPin, Clock, Check, ChevronRight, Train, HelpCircle, Footprints, Bus, Car, Navigation, DollarSign, Save, Plane } from 'lucide-react';
+import { X, MapPin, Clock, Check, ChevronRight, ChevronDown, Train, HelpCircle, Footprints, Bus, Car, Navigation, DollarSign, Save, Plane } from 'lucide-react';
 
 interface ItineraryItemEditorProps {
   item: ItineraryItem;
@@ -26,6 +26,19 @@ export default function ItineraryItemEditor({
   const [reservationTime, setReservationTime] = useState(item.reservationTime || '');
   const [notes, setNotes] = useState(item.notes || '');
   const [isHotel, setIsHotel] = useState(item.isHotel || /飯店|酒店|旅館|民宿|住宿|Hotel|Hostel|Inn|B&B/i.test(item.title) || false);
+  const [isCrossOvernight, setIsCrossOvernight] = useState(item.endMinutes > 1440);
+  const [showMoreSettings, setShowMoreSettings] = useState(
+    item.endMinutes > 1440 || !!item.isReserved || !!item.isHotel
+  );
+
+  // Auto-detect cross-overnight if end time has been set earlier than start time
+  useEffect(() => {
+    const startMins = parseTimeToMinutes(startTime);
+    const endMins = parseTimeToMinutes(endTime);
+    if (endMins < startMins && endMins > 0) {
+      setIsCrossOvernight(true);
+    }
+  }, [startTime, endTime]);
 
   // Auto-detect hotel keywords to suggest hotel status toggle
   useEffect(() => {
@@ -103,9 +116,13 @@ export default function ItineraryItemEditor({
     const startMins = parseTimeToMinutes(startTime);
     let endMins = parseTimeToMinutes(endTime);
 
-    // Auto fix if endMinutes <= startMinutes
-    if (endMins <= startMins) {
-      endMins = Math.min(1439, startMins + 60); // Default to 1 hour
+    if (isCrossOvernight) {
+      endMins = endMins + 1440;
+    } else {
+      // Auto fix if endMinutes <= startMinutes
+      if (endMins <= startMins) {
+        endMins = Math.min(1439, startMins + 60); // Default to 1 hour
+      }
     }
 
     onSave({
@@ -236,53 +253,87 @@ export default function ItineraryItemEditor({
             </div>
           </div>
 
+          {/* collapsible More Settings fields */}
+          <div className="pt-2 border-t border-white/5">
+            <button
+              type="button"
+              onClick={() => setShowMoreSettings(!showMoreSettings)}
+              className="flex items-center space-x-1.5 text-xs text-[#A7C7E7] hover:text-[#A7C7E7]/80 focus:outline-none transition select-none cursor-pointer"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showMoreSettings ? 'rotate-180' : ''}`} />
+              <span className="font-semibold">{showMoreSettings ? '收闔' : '展開'} 更多設定 (跨夜/預約/住宿設定)</span>
+            </button>
 
-
-          {/* Reservation Card */}
-          <div className="p-3.5 bg-[#A7C7E7]/5 rounded-xl border border-[#A7C7E7]/20 space-y-3">
-            <label className="flex items-center space-x-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-white/10 text-[#A7C7E7] focus:ring-[#A7C7E7] bg-black/20"
-                checked={isReserved}
-                onChange={(e) => setIsReserved(e.target.checked)}
-              />
-              <span className="text-sm font-medium text-white">
-                此行程需要預約 / 已完成預約
-              </span>
-            </label>
-
-            {isReserved && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-6 animate-fade-in text-left">
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#A7C7E7] mb-1">
-                    預約報到時間
+            {showMoreSettings && (
+              <div className="mt-3.5 space-y-3.5 animate-fade-in">
+                {/* Cross Overnight Option */}
+                <div className="p-3.5 bg-indigo-500/5 rounded-xl border border-indigo-500/10 space-y-2 text-left">
+                  <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-white/10 text-indigo-400 focus:ring-indigo-400 bg-black/20"
+                      checked={isCrossOvernight}
+                      onChange={(e) => setIsCrossOvernight(e.target.checked)}
+                    />
+                    <span className="text-sm font-semibold text-white">
+                      此行程/交通跨夜 (時間跨越隔天)
+                    </span>
                   </label>
-                  <input
-                    type="text"
-                    className="w-full px-2.5 py-1.5 bg-[#121214] border border-white/10 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#A7C7E7]"
-                    placeholder="例如 12:30 或 18:00"
-                    value={reservationTime}
-                    onChange={(e) => setReservationTime(e.target.value)}
-                  />
+                  {isCrossOvernight && (
+                    <p className="text-[11px] text-indigo-400/80 leading-relaxed font-light pl-6.5">
+                      💡 開啟後，結束時間將設定在隔日的 <span className="font-semibold text-[#A7C7E7] font-mono">{endTime}</span>。此行程將在今日深夜延續，並在明日日程前段 (00:00~{endTime}) 自動同步展示！
+                    </p>
+                  )}
+                </div>
+
+                {/* Reservation Card */}
+                <div className="p-3.5 bg-[#A7C7E7]/5 rounded-xl border border-[#A7C7E7]/20 space-y-3">
+                  <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-white/10 text-[#A7C7E7] focus:ring-[#A7C7E7] bg-black/20"
+                      checked={isReserved}
+                      onChange={(e) => setIsReserved(e.target.checked)}
+                    />
+                    <span className="text-sm font-medium text-white">
+                      此行程需要預約 / 已完成預約
+                    </span>
+                  </label>
+
+                  {isReserved && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-6 animate-fade-in text-left">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#A7C7E7] mb-1">
+                          預約報到時間
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-2.5 py-1.5 bg-[#121214] border border-white/10 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#A7C7E7]"
+                          placeholder="例如 12:30 或 18:00"
+                          value={reservationTime}
+                          onChange={(e) => setReservationTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hotel Designation Card */}
+                <div className="p-3.5 bg-indigo-500/5 rounded-xl border border-indigo-500/20 space-y-1.5 text-left">
+                  <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-white/10 text-indigo-400 focus:ring-indigo-400 bg-black/20"
+                      checked={isHotel}
+                      onChange={(e) => setIsHotel(e.target.checked)}
+                    />
+                    <span className="text-sm font-semibold text-white">
+                      今天是住宿飯店 / 住宿點
+                    </span>
+                  </label>
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Hotel Designation Card */}
-          <div className="p-3.5 bg-indigo-500/5 rounded-xl border border-indigo-500/20 space-y-1.5 text-left">
-            <label className="flex items-center space-x-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-white/10 text-indigo-400 focus:ring-indigo-400 bg-black/20"
-                checked={isHotel}
-                onChange={(e) => setIsHotel(e.target.checked)}
-              />
-              <span className="text-sm font-semibold text-white">
-                今天是住宿飯店 / 住宿點
-              </span>
-            </label>
           </div>
 
           {/* Transit and Routing Section & Google Maps integration */}

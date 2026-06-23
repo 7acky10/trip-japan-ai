@@ -82,8 +82,32 @@ export default function TripAgendaView({
       <div className="space-y-6">
         {dayTabs.map((day, dIdx) => {
           const dayItems = items
-            .filter((item) => item.date === day.dateString)
-            .sort((a, b) => a.startMinutes - b.startMinutes);
+            .filter((item) => {
+              if (item.date === day.dateString) return true;
+              if (item.endMinutes > 1440 && dIdx > 0) {
+                const prevDay = dayTabs[dIdx - 1];
+                if (item.date === prevDay.dateString) return true;
+              }
+              return false;
+            })
+            .sort((a, b) => {
+              const aStart = a.date === day.dateString ? a.startMinutes : 0;
+              const bStart = b.date === day.dateString ? b.startMinutes : 0;
+              return aStart - bStart;
+            });
+
+          const tomorrowDateStr = dayTabs[dIdx + 1]?.dateString;
+          const tomorrowItemsWithCrossTransit = tomorrowDateStr
+            ? items.filter((item) => {
+                return (
+                  item.tripId === trip.id &&
+                  item.date === tomorrowDateStr &&
+                  item.transitMode !== 'none' &&
+                  (item.transitDuration || 0) > 0 &&
+                  item.startMinutes - (item.transitDuration || 0) < 0
+                );
+              })
+            : [];
 
           return (
             <div key={day.dateString} className="space-y-3">
@@ -99,7 +123,7 @@ export default function TripAgendaView({
               </div>
 
               {/* Day items lists */}
-              {dayItems.length === 0 ? (
+              {dayItems.length === 0 && tomorrowItemsWithCrossTransit.length === 0 ? (
                 <div className="text-center p-6 bg-[#121214] rounded-xl border border-dashed border-white/5 text-[#8a8a8e] text-xs">
                   本日尚無行程規劃。回到 Calendar 點點看，新增一些好玩的景點吧！
                 </div>
@@ -107,20 +131,32 @@ export default function TripAgendaView({
                 <div className="space-y-3 pl-2 border-l-2 border-white/5">
                   {dayItems.map((item, idx) => {
                     const nextItem = dayItems[idx + 1];
+                    const isContinuedFromYesterday = item.date !== day.dateString;
 
                     return (
                       <div key={item.id} className="space-y-3">
                         {/* Event list card */}
                         <div 
                           onClick={() => onItemClick(item)}
-                          className="bg-[#121214] p-4 rounded-xl border border-white/5 hover:border-white/10 shadow-3xs cursor-pointer hover:shadow-xs transition duration-150 relative overflow-hidden group text-left"
+                          className={`p-4 rounded-xl border shadow-3xs cursor-pointer hover:shadow-xs transition duration-150 relative overflow-hidden group text-left ${
+                            isContinuedFromYesterday 
+                              ? 'bg-gradient-to-r from-indigo-500/5 to-transparent border-indigo-505/10 hover:border-indigo-500/20' 
+                              : 'bg-[#121214] border-white/5 hover:border-white/10'
+                          }`}
                         >
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
                               {/* Time and category */}
                               <div className="flex items-center space-x-2 text-xs font-mono text-gray-400">
                                 <Clock className="w-3.5 h-3.5 text-gray-500" />
-                                <span>{formatMinutesToTime(item.startMinutes)} - {formatMinutesToTime(item.endMinutes)}</span>
+                                {isContinuedFromYesterday ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-1.5 py-0.5 rounded font-sans font-bold">跨夜延續</span>
+                                    <span>{formatMinutesToTime(item.startMinutes)} - {formatMinutesToTime(item.endMinutes, true)}</span>
+                                  </span>
+                                ) : (
+                                  <span>{formatMinutesToTime(item.startMinutes)} - {formatMinutesToTime(item.endMinutes, true)}</span>
+                                )}
                               </div>
 
                               {/* Title */}
@@ -192,6 +228,53 @@ export default function TripAgendaView({
                             </div>
                           </div>
                         )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Render Cross-overnight Transits from Next Day on the Active (Previous) Day */}
+                  {tomorrowItemsWithCrossTransit.map((tomorrowItem) => {
+                    const duration = tomorrowItem.transitDuration || 0;
+                    const transitStartMinsToday = 1440 + (tomorrowItem.startMinutes - duration);
+                    
+                    return (
+                      <div 
+                        key={`cross-transit-agenda-${tomorrowItem.id}`}
+                        onClick={() => onTransitClick?.(tomorrowItem)}
+                        className="ml-4 flex items-center justify-between p-3 px-4 bg-gradient-to-r from-indigo-500/10 to-transparent hover:bg-indigo-500/15 active:scale-[0.99] rounded-xl border border-dashed border-indigo-500/20 text-xs text-left cursor-pointer transition duration-150"
+                      >
+                        <div className="flex items-center space-x-2.5 text-indigo-300">
+                          <span className="p-1.5 bg-[#121214] rounded-lg border border-indigo-500/25 shadow-3xs text-sm">
+                            {tomorrowItem.transitMode === 'train' && '🚇'}
+                            {tomorrowItem.transitMode === 'bus' && '🚌'}
+                            {tomorrowItem.transitMode === 'walk' && '🚶'}
+                            {tomorrowItem.transitMode === 'taxi' && '🚖'}
+                            {tomorrowItem.transitMode === 'flight' && '✈️'}
+                            {tomorrowItem.transitMode === 'transit' && '🗺️'}
+                          </span>
+                          <div>
+                            <span className="bg-indigo-500/25 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded font-bold mr-1.5">跨夜交通</span>
+                            <span className="font-bold text-white text-xs mr-2">{tomorrowItem.transitDetails || '移動中'}</span>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              ⏱️ {duration} 分鐘 • 預計於 {formatMinutesToTime(transitStartMinsToday)} 出發，跨夜至隔日 {formatMinutesToTime(tomorrowItem.startMinutes)} 抵達 {tomorrowItem.title}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-1.5 font-bold text-indigo-300 shrink-0 text-xs">
+                          <span>{(tomorrowItem.transitCurrency === '$' ? 'NT$' : tomorrowItem.transitCurrency || '¥')} {tomorrowItem.transitCost}</span>
+                          {tomorrowItem.googleMapsUrl && (
+                            <a
+                              href={tomorrowItem.googleMapsUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1 hover:bg-white/10 rounded transition text-indigo-400"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

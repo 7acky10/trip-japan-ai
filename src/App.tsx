@@ -408,10 +408,36 @@ export default function App() {
     ? generateDaysList(currentTrip.startDate, currentTrip.endDate)
     : [];
 
-  // Filter items for current active date
-  const activeDayItems = itineraryItems.filter(
-    item => currentTrip && item.tripId === currentTrip.id && item.date === activeDate
-  );
+  // Filter items for current active date, including previous day's items that cross overnight (endMinutes > 1440)
+  const activeDayItems = itineraryItems.filter(item => {
+    if (!currentTrip || item.tripId !== currentTrip.id) return false;
+    
+    // Direct match
+    if (item.date === activeDate) return true;
+    
+    // If item crosses midnight, check if it was on the previous day
+    if (item.endMinutes > 1440) {
+      const activeIdx = dayTabs.findIndex(t => t.dateString === activeDate);
+      if (activeIdx > 0) {
+        const prevDayString = dayTabs[activeIdx - 1].dateString;
+        if (item.date === prevDayString) return true;
+      }
+    }
+    return false;
+  });
+
+  const activeIdx = dayTabs.findIndex(t => t.dateString === activeDate);
+  const nextDayTransitItems = currentTrip && activeIdx >= 0 && activeIdx < dayTabs.length - 1
+    ? itineraryItems.filter(item => {
+        return (
+          item.tripId === currentTrip.id &&
+          item.date === dayTabs[activeIdx + 1].dateString &&
+          item.transitMode !== 'none' &&
+          (item.transitDuration || 0) > 0 &&
+          item.startMinutes - (item.transitDuration || 0) < 0
+        );
+      })
+    : [];
 
   // Find the active hotel for the previous night of a given item's date
   const getPreviousNightHotel = (activeItem: ItineraryItem): ItineraryItem | null => {
@@ -586,6 +612,9 @@ export default function App() {
                       <span className="text-sm font-black leading-none">
                         {day.formattedDate}
                       </span>
+                      <span className="text-[10px] font-bold mt-1 opacity-80 leading-none">
+                        {day.dayOfWeek}
+                      </span>
                     </button>
                   );
                 })}
@@ -598,6 +627,8 @@ export default function App() {
               {viewMode === 'calendar' ? (
                 <CalendarGrid
                   items={activeDayItems}
+                  activeDate={activeDate}
+                  nextDayTransitItems={nextDayTransitItems}
                   onItemClick={(item) => setEditingItem(item)}
                   onTransitClick={(item) => setViewingItemDetail(item)}
                   onItemTimeUpdate={handleItemTimeUpdate}
