@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
+import { Firestore } from "@google-cloud/firestore";
 
 async function startServer() {
   const app = express();
@@ -10,60 +11,74 @@ async function startServer() {
   // Let Express parse JSON bodies up to 10MB safely
   app.use(express.json({ limit: "10mb" }));
 
-  // Shared trips DB file persistence fallback
-  const DB_FILE = path.join(process.cwd(), "db-shared.json");
-  let sharedDb: Record<string, { trip: any; items: any[]; lastUpdated: number }> = {};
-
+  // Initialize Cloud Firestore client
+  let firestore: Firestore;
   try {
-    if (fs.existsSync(DB_FILE)) {
-      sharedDb = JSON.parse(fs.readFileSync(DB_FILE, "utf-8"));
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      console.log("Initializing Firestore with config for project:", config.projectId);
+      firestore = new Firestore({
+        projectId: config.projectId,
+        databaseId: config.firestoreDatabaseId || "(default)",
+      });
+    } else {
+      console.log("No local firebase-applet-config.json found, falling back to ambient Firestore credentials");
+      firestore = new Firestore();
     }
   } catch (e) {
-    console.error("Local database load warning, fallback to memory DB", e);
+    console.warn("Firestore client initialization failed, falling back to basic Firestore constructor:", e);
+    firestore = new Firestore();
   }
 
-  const saveDb = () => {
-    try {
-      fs.writeFileSync(DB_FILE, JSON.stringify(sharedDb, null, 2), "utf-8");
-    } catch (e) {
-      console.error("Failed to write persistence database file:", e);
-    }
-  };
-
   // API Route - Create Share Trip
-  app.post("/api/share", (req: any, res: any) => {
+  app.post("/api/share", async (req: any, res: any) => {
     const { trip, items } = req.body;
     if (!trip || !items) {
       return res.status(400).json({ error: "Missing trip or items data" });
     }
 
-    // Generate a clean 6-character sharing code
-    const syncId = Math.random().toString(36).substring(2, 8).toLowerCase();
-    sharedDb[syncId] = {
-      trip: { ...trip, syncId },
-      items,
-      lastUpdated: Date.now()
-    };
+    try {
+      // Generate a clean 6-character sharing code
+      const syncId = Math.random().toString(36).substring(2, 8).toLowerCase();
+      
+      const docData = {
+        trip: { ...trip, syncId },
+        items,
+        lastUpdated: Date.now()
+      };
 
-    saveDb();
-    res.json({ syncId, message: "Share established successfully!" });
+      await firestore.collection("shares").doc(syncId).set(docData);
+      res.json({ syncId, message: "Share established successfully!" });
+    } catch (err: any) {
+      console.error("Firestore Write Error on /api/share:", err);
+      res.status(500).json({ error: "建立雲端分享發生錯誤，請稍後再試！" });
+    }
   });
 
   // API Route - Get Shared Trip
-  app.get("/api/share/:syncId", (req: any, res: any) => {
+  app.get("/api/share/:syncId", async (req: any, res: any) => {
     const { syncId } = req.params;
     const cleanId = syncId.toLowerCase();
-    const found = sharedDb[cleanId];
 
-    if (!found) {
-      return res.status(404).json({ error: "Sorry, this trip sync code does not exist!" });
+    try {
+      const docRef = firestore.collection("shares").doc(cleanId);
+      const snapshot = await docRef.get();
+
+      if (!snapshot.exists) {
+        return res.status(404).json({ error: "Sorry, this trip sync code does not exist!" });
+      }
+
+      const data = snapshot.data();
+      res.json({ trip: data?.trip, items: data?.items || [] });
+    } catch (err: any) {
+      console.error("Firestore Read Error on /api/share/:syncId:", err);
+      res.status(500).json({ error: "讀取雲端行程發生錯誤，請稍後再試！" });
     }
-
-    res.json({ trip: found.trip, items: found.items });
   });
 
   // API Route - Sync/Update Shared Trip
-  app.put("/api/share/:syncId", (req: any, res: any) => {
+  app.put("/api/share/:syncId", async (req: any, res: any) => {
     const { syncId } = req.params;
     const cleanId = syncId.toLowerCase();
     const { trip, items } = req.body;
@@ -72,14 +87,19 @@ async function startServer() {
       return res.status(400).json({ error: "Missing trip or items data for sync" });
     }
 
-    sharedDb[cleanId] = {
-      trip: { ...trip, syncId: cleanId },
-      items,
-      lastUpdated: Date.now()
-    };
+    try {
+      const docData = {
+        trip: { ...trip, syncId: cleanId },
+        items,
+        lastUpdated: Date.now()
+      };
 
-    saveDb();
-    res.json({ success: true, message: "Synced successfully!" });
+      await firestore.collection("shares").doc(cleanId).set(docData);
+      res.json({ success: true, message: "Synced successfully!" });
+    } catch (err: any) {
+      console.error("Firestore Update Error on /api/share/:syncId:", err);
+      res.status(500).json({ error: "同步雲端行程發生錯誤，請稍後再試！" });
+    }
   });
 
   // Vite middleware for development
