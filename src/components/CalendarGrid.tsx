@@ -69,7 +69,7 @@ export default function CalendarGrid({
       case 'bus': return <Bus className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
       case 'walk': return <Footprints className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
       case 'taxi': return <Car className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
-      case 'transit': return <Navigation className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
+      case 'transit': return <Train className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
       case 'flight': return <Plane className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
       default: return null;
     }

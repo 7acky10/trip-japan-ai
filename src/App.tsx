@@ -79,7 +79,7 @@ const DEMO_ITEMS: ItineraryItem[] = [
     reservationTime: '',
     googleMapsRoute: '東京車站 → 築地市場',
     googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&origin=%E6%9D%B1%E4%BA%AC%E8%BB%8A%E7%AB%99&destination=%E7%AF%89%E5%9C%B0%E5%A0%B4%E5%A4%96%E5%B8%82%E5%A0%B4&travelmode=transit',
-    transitMode: 'transit',
+    transitMode: 'train',
     transitCost: 180,
     transitDuration: 15,
     transitDetails: '搭乘東京地下鐵日比谷線至築地站',
@@ -115,7 +115,7 @@ const DEMO_ITEMS: ItineraryItem[] = [
     reservationTime: '18:30',
     googleMapsRoute: '豐洲 → 銀座',
     googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&origin=teamLab+Planets+TOKYO%E8%B1%90%E6%B4%B2&destination=%E9%8B%80%E5%BA%A7%E6%9C%A8%E6%9D%91%E5%AE%B6&travelmode=transit',
-    transitMode: 'transit',
+    transitMode: 'train',
     transitCost: 320,
     transitDuration: 25,
     transitDetails: '搭乘有樂町線至銀座一丁目站',
@@ -188,7 +188,7 @@ const DEMO_ITEMS: ItineraryItem[] = [
     reservationTime: '19:00',
     googleMapsRoute: '新宿御苑 → 六本木之丘',
     googleMapsUrl: 'https://www.google.com/maps/dir/?api=1&origin=%E6%96%B0%E5%AE%BF%E5%BE%A1%E8%8B%91&destination=%E5%85%AD%E6%9C%AC%E6%9C%A8%E4%B9%8B%E4%B8%98+%E6%A3%AE%E5%A4%A3%E6%A8%93&travelmode=transit',
-    transitMode: 'transit',
+    transitMode: 'train',
     transitCost: 220,
     transitDuration: 18,
     transitDetails: '搭乘都營地下鐵大江戶線',
@@ -301,24 +301,25 @@ export default function App() {
   }, []);
 
   // Monitor currentTrip change to pre-select correct activeDate (today's date if within trip range)
+  // Only trigger when the actual trip ID changes to prevent polling from resetting the user's active date selection.
   useEffect(() => {
     if (currentTrip) {
-      const todayStr = getLocalDateString();
-      if (todayStr >= currentTrip.startDate && todayStr <= currentTrip.endDate) {
-        setActiveDate(todayStr);
-        setViewMode('calendar'); // 開啟網頁時直接跳到當天的日曆時段
-      } else {
-        // If today is not in the trip, default to the trip's starting date
-        const days = generateDaysList(currentTrip.startDate, currentTrip.endDate);
-        const isValidActiveDate = days.some(day => day.dateString === activeDate);
-        if (!activeDate || !isValidActiveDate) {
+      const days = generateDaysList(currentTrip.startDate, currentTrip.endDate);
+      const isValidActiveDate = days.some(day => day.dateString === activeDate);
+      
+      if (!activeDate || !isValidActiveDate) {
+        const todayStr = getLocalDateString();
+        if (todayStr >= currentTrip.startDate && todayStr <= currentTrip.endDate) {
+          setActiveDate(todayStr);
+          setViewMode('calendar'); // 開啟網頁時直接跳到當天的日曆時段
+        } else {
           setActiveDate(currentTrip.startDate);
         }
       }
     } else {
       setActiveDate('');
     }
-  }, [currentTrip]);
+  }, [currentTrip?.id]);
 
   // Sync state to LocalStorage
   const saveToLocalStorage = (allTrips: Trip[], allItems: ItineraryItem[]) => {
@@ -710,18 +711,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Quick adding FAB button for mobile users */}
-            <div className="sticky bottom-4 right-4 flex justify-end px-3.5 z-30 pointer-events-none">
-              <button
-                type="button"
-                onClick={() => handleAddNewItemAtTime(600)} // Defaults to 10:00
-                className="pointer-events-auto bg-[#A7C7E7] hover:bg-[#96b7d7] text-black p-3.5 rounded-full shadow-lg flex items-center justify-center transition active:scale-95 text-xs font-bold space-x-1.5"
-              >
-                <Plus className="w-5 h-5 shrink-0" />
-                <span>新增時段</span>
-              </button>
-            </div>
-
             {/* Dynamic Cloud Sync Collaboration Panel */}
             <div className="max-w-md mx-auto w-full px-4 sm:px-0">
               <CloudSyncManager
@@ -891,7 +880,7 @@ export default function App() {
                       {viewingItemDetail.transitMode === 'walk' && '🚶'}
                       {viewingItemDetail.transitMode === 'taxi' && '🚖'}
                       {viewingItemDetail.transitMode === 'flight' && '✈️'}
-                      {viewingItemDetail.transitMode === 'transit' && '🗺️'}
+                      {viewingItemDetail.transitMode === 'transit' && '🚇'}
                     </span>
                     <p className="text-[10px] text-emerald-400/80 font-medium">
                       預估乘車時間 {viewingItemDetail.transitDuration} 分鐘{viewingItemDetail.transitCost !== undefined && viewingItemDetail.transitCost !== null && viewingItemDetail.transitCost >= 0 ? ` • ${viewingItemDetail.transitCurrency === '$' ? 'NT$' : viewingItemDetail.transitCurrency || '¥'} ${viewingItemDetail.transitCost}` : ''}

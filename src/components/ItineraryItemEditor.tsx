@@ -360,7 +360,7 @@ export default function ItineraryItemEditor({
                 </span>
               ) : (
                 <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/10 px-2.5 py-1 rounded-full">
-                  當天首個行程 (無起點)
+                  當前無起點
                 </span>
               )}
             </div>
@@ -374,8 +374,8 @@ export default function ItineraryItemEditor({
                     <div className="p-3 bg-emerald-500/5 text-emerald-450 border border-emerald-500/20 rounded-xl flex items-center space-x-2.5 text-xs">
                       <Plane className="w-5 h-5 text-emerald-400 animate-pulse" />
                       <div>
-                        <p className="font-bold">已啟用「機場航班」模式</p>
-                        <p className="text-[10px] text-gray-400 font-light mt-0.5">此模式不帶入 Google Map 路線資訊，您可以自由填寫班機詳情。</p>
+                        <p className="font-bold">啟用「航班」模式</p>
+                        <p className="text-[10px] text-gray-400 font-light mt-0.5">此模式不帶入 Google Map 路線資訊，您可以填寫班機詳情。</p>
                       </div>
                     </div>
 
@@ -467,15 +467,14 @@ export default function ItineraryItemEditor({
                         value={transitMode}
                         onChange={(e) => setTransitMode(e.target.value as TransitMode)}
                       >
-                        <optgroup label="地面前行">
+                        <optgroup label="陸地交通">
                           <option value="none">無 (不顯示路程)</option>
-                          <option value="transit">大眾運輸 (電車/地下鐵)</option>
-                          <option value="train">鐵路 (火車/新幹線)</option>
+                          <option value="train">🚇 電車/地下鐵/JR/新幹線</option>
                           <option value="bus">公車 / 客運</option>
                           <option value="walk">步行</option>
-                          <option value="taxi">計程車 / 車輛</option>
+                          <option value="taxi">計程車 / 開車</option>
                         </optgroup>
-                        <optgroup label="空中飛行">
+                        <optgroup label="搭乘飛機">
                           <option value="flight">✈️ 機場航班 (飛機)</option>
                         </optgroup>
                       </select>
@@ -485,7 +484,6 @@ export default function ItineraryItemEditor({
                       <p className="text-[10px] text-[#A7C7E7] font-semibold mb-0.5">預覽輸出成果：</p>
                       <p className="text-xs font-mono text-gray-300">
                         {transitDetails || "未輸入完整航班資訊"}
-                        {transitDuration ? ` (${transitDuration} 分鐘)` : ""}
                         {transitCost ? ` | ${transitCurrency}${transitCost}` : ""}
                       </p>
                     </div>
@@ -505,15 +503,14 @@ export default function ItineraryItemEditor({
                             value={transitMode}
                             onChange={(e) => setTransitMode(e.target.value as TransitMode)}
                           >
-                            <optgroup label="地面前行">
+                            <optgroup label="陸地交通">
                               <option value="none">無 (不顯示路程)</option>
-                              <option value="transit">大眾運輸 (電車/地下鐵)</option>
-                              <option value="train">鐵路 (火車/新幹線)</option>
+                              <option value="train">🚇 電車/地下鐵/JR/新幹線</option>
                               <option value="bus">公車 / 客運</option>
                               <option value="walk">步行</option>
-                              <option value="taxi">計程車 / 車輛</option>
+                              <option value="taxi">計程車 / 開車</option>
                             </optgroup>
-                            <optgroup label="空中飛行">
+                            <optgroup label="搭乘飛機">
                               <option value="flight">✈️ 機場航班 (飛機)</option>
                             </optgroup>
                           </select>

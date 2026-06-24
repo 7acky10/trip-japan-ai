@@ -152,7 +152,7 @@ export default function TripAgendaView({
                               {item.transitMode === 'walk' && '🚶'}
                               {item.transitMode === 'taxi' && '🚖'}
                               {item.transitMode === 'flight' && '✈️'}
-                              {item.transitMode === 'transit' && '🗺️'}
+                              {item.transitMode === 'transit' && '🚇'}
                             </div>
 
                             {(() => {
@@ -280,7 +280,7 @@ export default function TripAgendaView({
                           {tomorrowItem.transitMode === 'walk' && '🚶'}
                           {tomorrowItem.transitMode === 'taxi' && '🚖'}
                           {tomorrowItem.transitMode === 'flight' && '✈️'}
-                          {tomorrowItem.transitMode === 'transit' && '🗺️'}
+                          {tomorrowItem.transitMode === 'transit' && '🚇'}
                         </div>
 
                         {(() => {
