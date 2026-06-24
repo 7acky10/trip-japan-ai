@@ -29,9 +29,9 @@ export default function CloudSyncManager({
   // Auto parsing URL search param to join a trip seamlessly if ?join=abcde is in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const joinCode = params.get("join");
-    if (joinCode && joinCode.trim().length === 6 && !currentTrip) {
-      handleJoinTripDirectly(joinCode.trim().toLowerCase());
+    const joinCode = params.get("join")?.trim().toLowerCase();
+    if (joinCode && joinCode.length === 6 && (!currentTrip || currentTrip.syncId !== joinCode)) {
+      handleJoinTripDirectly(joinCode);
     }
   }, [currentTrip]);
 
@@ -176,6 +176,11 @@ export default function CloudSyncManager({
       }
 
       const data = await res.json();
+      
+      // Ensure sync variables are correctly set so that we don't overwrite cloud data with uninitialized local states
+      prevItemsRef.current = JSON.stringify(data.items);
+      initialLoadDone.current = true;
+
       onSyncReceived(data.trip, data.items);
       setSyncCodeInput("");
       
