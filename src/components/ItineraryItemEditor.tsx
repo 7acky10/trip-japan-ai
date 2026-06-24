@@ -209,12 +209,12 @@ export default function ItineraryItemEditor({
   // Get transit icon
   const getModeIcon = (mode: TransitMode) => {
     switch (mode) {
-      case 'train': return <Train className="w-4 h-4 text-emerald-400" />;
-      case 'bus': return <Bus className="w-4 h-4 text-emerald-400" />;
-      case 'walk': return <Footprints className="w-4 h-4 text-emerald-400" />;
-      case 'taxi': return <Car className="w-4 h-4 text-emerald-400" />;
-      case 'transit': return <Navigation className="w-4 h-4 text-emerald-400" />;
-      case 'flight': return <Plane className="w-4 h-4 text-emerald-400" />;
+      case 'train': return <Train className="w-4 h-4 text-sky-400" />;
+      case 'bus': return <Bus className="w-4 h-4 text-sky-400" />;
+      case 'walk': return <Footprints className="w-4 h-4 text-sky-400" />;
+      case 'taxi': return <Car className="w-4 h-4 text-sky-400" />;
+      case 'transit': return <Navigation className="w-4 h-4 text-sky-400" />;
+      case 'flight': return <Plane className="w-4 h-4 text-sky-400" />;
       default: return <HelpCircle className="w-4 h-4 text-gray-500" />;
     }
   };
@@ -450,8 +450,8 @@ export default function ItineraryItemEditor({
                 {transitMode === 'flight' ? (
                   /* Flight Input Mode */
                   <div className="space-y-3.5">
-                    <div className="p-3 bg-emerald-500/5 text-emerald-450 border border-emerald-500/20 rounded-xl flex items-center space-x-2.5 text-xs">
-                      <Plane className="w-5 h-5 text-emerald-400 animate-pulse" />
+                    <div className="p-3 bg-sky-500/5 text-sky-300 border border-sky-500/20 rounded-xl flex items-center space-x-2.5 text-xs">
+                      <Plane className="w-5 h-5 text-sky-400 animate-pulse" />
                       <div>
                         <p className="font-bold">啟用「航班」模式</p>
                         <p className="text-[10px] text-gray-400 font-light mt-0.5">此模式不帶入 Google Map 路線資訊，您可以填寫班機詳情。</p>

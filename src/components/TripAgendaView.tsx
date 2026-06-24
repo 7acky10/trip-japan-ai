@@ -143,10 +143,10 @@ export default function TripAgendaView({
                             className="relative pl-2 pr-3 py-2.5 hover:bg-white/2 transition rounded-xl text-xs text-left cursor-pointer duration-150 group/transit"
                           >
                             {/* Accent timeline rail for transit */}
-                            <div className="absolute left-[-17px] -translate-x-1/2 top-0 bottom-0 w-[2px] bg-emerald-500/30 group-hover/transit:bg-emerald-500/50 z-10" />
+                            <div className="absolute left-[-17px] -translate-x-1/2 top-0 bottom-0 w-[2px] bg-sky-500/30 group-hover/transit:bg-sky-500/50 z-10" />
                             
                             {/* Transit bubble */}
-                            <div className="absolute left-[-17px] -translate-x-1/2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0a0c] border border-emerald-500/30 flex items-center justify-center text-[11px] shadow-sm z-20 transition group-hover/transit:border-emerald-500/50">
+                            <div className="absolute left-[-17px] -translate-x-1/2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0a0c] border border-sky-500/30 flex items-center justify-center text-[11px] shadow-sm z-20 transition group-hover/transit:border-sky-500/50">
                               {item.transitMode === 'train' && '🚇'}
                               {item.transitMode === 'bus' && '🚌'}
                               {item.transitMode === 'walk' && '🚶'}
@@ -163,24 +163,24 @@ export default function TripAgendaView({
                               return (
                                 <>
                                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                                    <div className="flex flex-wrap items-center gap-1.5 text-emerald-300">
+                                    <div className="flex flex-wrap items-center gap-1.5 text-sky-300">
                                       <span className="font-bold text-white/95 text-xs sm:text-sm">
                                         {transitTitle}
                                       </span>
-                                      <span className="text-emerald-400/80 font-semibold text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                                      <span className="text-sky-400/80 font-semibold text-[10px] bg-sky-500/10 px-1.5 py-0.5 rounded shrink-0">
                                         {item.transitDuration} 分鐘
                                       </span>
                                     </div>
 
                                     {item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 1 && (
-                                      <div className="flex items-center space-x-1.5 font-semibold text-emerald-300 shrink-0 text-xs">
+                                      <div className="flex items-center space-x-1.5 font-semibold text-sky-300 shrink-0 text-xs">
                                         <span>{(item.transitCurrency === '$' ? 'NT$' : item.transitCurrency || '¥')} {item.transitCost}</span>
                                         {item.googleMapsUrl && (
                                           <a
                                             href={item.googleMapsUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="p-1 hover:bg-white/10 rounded transition text-emerald-400"
+                                            className="p-1 hover:bg-white/10 rounded transition text-sky-400"
                                             onClick={(e) => e.stopPropagation()}
                                           >
                                             <ExternalLink className="w-3.5 h-3.5" />

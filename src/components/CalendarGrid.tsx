@@ -37,8 +37,20 @@ export default function CalendarGrid({
   const [pointerStartY, setPointerStartY] = useState<number>(0);
   const [currentDeltaMinutes, setCurrentDeltaMinutes] = useState<number>(0);
   const [longPressAlert, setLongPressAlert] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Detect mobile/tablet screen & touch input to prevent drag scroll collision
+  useEffect(() => {
+    const checkMobile = () => {
+      // ONLY classify true small screen mobile viewports (< 768px) as "mobile" for layout/hints
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Clear timer on unmount
   useEffect(() => {
@@ -65,12 +77,12 @@ export default function CalendarGrid({
 
   const getTransitIcon = (mode: TransitMode) => {
     switch (mode) {
-      case 'train': return <Train className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
-      case 'bus': return <Bus className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
-      case 'walk': return <Footprints className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
-      case 'taxi': return <Car className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
-      case 'transit': return <Train className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
-      case 'flight': return <Plane className="w-3.5 h-3.5 text-emerald-400 sm:w-4 sm:h-4" />;
+      case 'train': return <Train className="w-3.5 h-3.5 text-sky-400 sm:w-4 sm:h-4" />;
+      case 'bus': return <Bus className="w-3.5 h-3.5 text-sky-400 sm:w-4 sm:h-4" />;
+      case 'walk': return <Footprints className="w-3.5 h-3.5 text-sky-400 sm:w-4 sm:h-4" />;
+      case 'taxi': return <Car className="w-3.5 h-3.5 text-sky-400 sm:w-4 sm:h-4" />;
+      case 'transit': return <Train className="w-3.5 h-3.5 text-sky-400 sm:w-4 sm:h-4" />;
+      case 'flight': return <Plane className="w-3.5 h-3.5 text-sky-400 sm:w-4 sm:h-4" />;
       default: return null;
     }
   };
@@ -96,6 +108,9 @@ export default function CalendarGrid({
     actionType: 'drag' | 'resize-top' | 'resize-bottom'
   ) => {
     e.stopPropagation();
+
+    // Disable dragging/resizing on actual touch input to prevent touch scrolling conflicts
+    if (e.pointerType === 'touch') return;
 
     // Disable dragging/resizing on items continued from yesterday or cross-overnight items
     const isContinuedFromYesterday = activeDate && item.date !== activeDate;
@@ -220,8 +235,17 @@ export default function CalendarGrid({
       {/* Guide Banner */}
       <div className="bg-[#1e1e22]/80 px-4 py-2 border-b border-white/5 flex items-center justify-between text-[11px] text-gray-400">
         <span className="flex items-center">
-          💡 <strong className="ml-1 text-[#e0e0e0] font-medium">手勢指南：</strong>
-          長按行程開始拖曳、長按外框上下邊緣可調整時間
+          {isMobile ? (
+            <>
+              📱 <strong className="ml-1 text-[#e0e0e0] font-medium">提示：</strong>
+              已在行動裝置上鎖定拖曳與調整時間（避免與捲動衝突），請直接點選行程進行編輯。
+            </>
+          ) : (
+            <>
+              💡 <strong className="ml-1 text-[#e0e0e0] font-medium">手勢指南：</strong>
+              長按行程開始拖曳、長按外框上下邊緣可調整時間
+            </>
+          )}
         </span>
       </div>
 
@@ -293,7 +317,7 @@ export default function CalendarGrid({
                 <div
                   key={`transit-gap-${currItem.id}`}
                   onClick={() => onTransitClick?.(currItem)}
-                  className="absolute left-2 right-2 sm:left-4 sm:right-4 z-10 flex items-center justify-between border border-dashed border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 cursor-pointer active:scale-[0.99] rounded-xl px-3 transition shadow-3xs"
+                  className="absolute left-2 right-2 sm:left-4 sm:right-4 z-10 flex items-center justify-between border border-dashed border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/10 cursor-pointer active:scale-[0.99] rounded-xl px-3 transition shadow-3xs"
                   style={{
                     top: `${topPos}px`,
                     height: `${heightPos}px`,
@@ -304,10 +328,10 @@ export default function CalendarGrid({
                       {getTransitIcon(currItem.transitMode)}
                     </span>
                     <div className="overflow-hidden">
-                      <p className="text-[10px] sm:text-xs font-semibold text-emerald-300 truncate">
+                      <p className="text-[10px] sm:text-xs font-semibold text-sky-300 truncate">
                         {displayTitle}
                       </p>
-                      <p className="text-[8px] sm:text-[10px] text-emerald-400/80">
+                      <p className="text-[8px] sm:text-[10px] text-sky-400/80">
                          {duration} 分鐘 {originalTransitStart < 0 && `(本日路程 ${heightPos} 分鐘)`}
                       </p>
                     </div>
@@ -315,7 +339,7 @@ export default function CalendarGrid({
 
                   <div className="text-right shrink-0">
                     {currItem.transitCost !== undefined && currItem.transitCost !== null && currItem.transitCost >= 1 && (
-                      <span className="text-[10px] sm:text-xs font-extrabold text-emerald-300 bg-[#1e1e22]/80 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] sm:text-xs font-extrabold text-sky-300 bg-[#1e1e22]/80 border border-sky-500/20 px-1.5 py-0.5 rounded">
                         {(currItem.transitCurrency === '$' ? 'NT$' : currItem.transitCurrency || '¥')} {currItem.transitCost}
                       </span>
                     )}
@@ -324,7 +348,7 @@ export default function CalendarGrid({
                       href={currItem.googleMapsUrl} 
                       target="_blank" 
                       rel="noreferrer"
-                      className="ml-1 inline-flex items-center p-0.5 hover:bg-white/10 rounded transition text-emerald-400"
+                      className="ml-1 inline-flex items-center p-0.5 hover:bg-white/10 rounded transition text-sky-400"
                         title="開啟預排好的交通路線"
                       >
                         <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -448,7 +472,7 @@ export default function CalendarGrid({
                 >
                   
                   {/* Long-press Top Edge Resize Handle */}
-                  {(!isContinuedFromYesterday && !isCrossOvernightItem) && (
+                  {(!isMobile && !isContinuedFromYesterday && !isCrossOvernightItem) && (
                     <div
                       className="absolute -top-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
                       onPointerDown={(e) => handlePointerDown(e, item, 'resize-top')}
@@ -525,7 +549,7 @@ export default function CalendarGrid({
                   </div>
 
                   {/* Long-press Bottom Edge Resize Handle */}
-                  {(!isContinuedFromYesterday && !isCrossOvernightItem) && (
+                  {(!isMobile && !isContinuedFromYesterday && !isCrossOvernightItem) && (
                     <div
                       className="absolute -bottom-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
                       onPointerDown={(e) => handlePointerDown(e, item, 'resize-bottom')}

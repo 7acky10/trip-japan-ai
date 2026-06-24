@@ -922,9 +922,9 @@ export default function App() {
 
             {/* Transit Route options */}
             {viewingItemDetail.transitMode !== 'none' ? (
-              <div className="p-3.5 bg-emerald-500/5 text-emerald-300 rounded-xl border border-emerald-500/10 space-y-2">
+              <div className="p-3.5 bg-sky-500/5 text-sky-300 rounded-xl border border-sky-500/10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">大眾交通規劃資訊</span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-sky-400">大眾交通規劃資訊</span>
                   {viewingItemDetail.googleMapsUrl && (
                     <a
                       href={viewingItemDetail.googleMapsUrl}
@@ -948,12 +948,12 @@ export default function App() {
                       {viewingItemDetail.transitMode === 'flight' && '✈️'}
                       {viewingItemDetail.transitMode === 'transit' && '🚇'}
                     </span>
-                    <p className="text-[10px] text-emerald-400/80 font-medium">
+                    <p className="text-[10px] text-sky-400/80 font-medium">
                       預估乘車時間 {viewingItemDetail.transitDuration} 分鐘{viewingItemDetail.transitCost !== undefined && viewingItemDetail.transitCost !== null && viewingItemDetail.transitCost >= 1 ? ` • ${viewingItemDetail.transitCurrency === '$' ? 'NT$' : viewingItemDetail.transitCurrency || '¥'} ${viewingItemDetail.transitCost}` : ''}
                     </p>
                   </div>
                   {viewingItemDetail.transitDetails && (
-                    <div className="text-xs text-emerald-300 font-medium whitespace-pre-wrap leading-relaxed break-words text-left pl-1">
+                    <div className="text-xs text-sky-300 font-medium whitespace-pre-wrap leading-relaxed break-words text-left pl-1">
                       {viewingItemDetail.transitDetails}
                     </div>
                   )}
