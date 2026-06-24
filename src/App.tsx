@@ -961,7 +961,7 @@ export default function App() {
               </div>
             ) : (
               <div className="p-3 bg-[#1e1e22] text-gray-500 text-center rounded-xl text-[11px] border border-white/5">
-                無預排之交通工具，此行程前不顯示交通路程。
+                無預排之交通方式。
               </div>
             )}
 
