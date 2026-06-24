@@ -253,8 +253,21 @@ export default function ItineraryItemEditor({
             </div>
           </div>
 
+          {/* Notes */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              備註說明 (行程細節、注意事項)
+            </label>
+            <textarea
+              className="w-full px-3 py-2 bg-[#121214] border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#A7C7E7] focus:bg-[#121214] transition"
+              rows={2}
+              placeholder="例如：入園門票須先拿好，推薦買草莓大幅。"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
           {/* collapsible More Settings fields */}
-          <div className="pt-2 border-t border-white/5">
             <button
               type="button"
               onClick={() => setShowMoreSettings(!showMoreSettings)}
@@ -334,13 +347,12 @@ export default function ItineraryItemEditor({
                 </div>
               </div>
             )}
-          </div>
 
           {/* Transit and Routing Section & Google Maps integration */}
           <div className="border-t border-white/5 pt-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white flex items-center space-x-1.5">
-                <span>🚌 前往此地的交通工具或航班</span>
+                <span>--前往此地的交通工具--</span>
               </h4>
               {previousLocation ? (
                 <span className="text-xs text-gray-300 bg-white/5 border border-white/5 px-2.5 py-1 rounded-full">
@@ -479,44 +491,10 @@ export default function ItineraryItemEditor({
                     </div>
                   </div>
                 ) : (
-                  /* Standard Land Transit selector with Google Maps route info */
+                  /* Standard Land Transit - Let user input details directly */
                   <div className="space-y-3">
-                    {previousLocation && (
-                      <>
-                        <p className="text-xs text-gray-400 leading-relaxed text-left">
-                          系統偵測上個地點，自動在 Google Maps 搜尋大眾運輸路線。請選擇一條安排加入本次行程：
-                        </p>
-
-                        <div className="grid grid-cols-1 gap-2">
-                          {transitOptions.map((opt, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handleApplyTransitOption(opt)}
-                              className={`flex items-center justify-between p-2 rounded-lg border text-left text-xs transition duration-150 ${
-                                transitMode === opt.mode && transitDetails === opt.details
-                                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                                  : 'bg-black/20 border-white/10 text-gray-300 hover:bg-white/5'
-                              }`}
-                            >
-                              <div className="flex items-center space-x-2">
-                                <span className="p-1 px-1.5 bg-[#1e1e22] border border-white/5 rounded-md">
-                                  {getModeIcon(opt.mode)}
-                                </span>
-                                <div>
-                                  <p className="font-semibold">{opt.details}</p>
-                                  <p className="text-[10px] text-gray-400">{opt.desc}</p>
-                                </div>
-                              </div>
-                              <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
                     {/* Customized Transit Edit */}
-                    <div className="border-t border-dashed border-white/5 pt-3 space-y-2">
+                    <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
@@ -580,12 +558,12 @@ export default function ItineraryItemEditor({
                         </div>
                         <div>
                           <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">
-                            路程詳情
+                            路程詳情 (支援換行與詳細分類)
                           </label>
-                          <input
-                            type="text"
-                            className="w-full p-1.5 bg-[#121214] border border-white/10 rounded text-xs text-white placeholder-gray-500"
-                            placeholder="例如「搭乘淺草線」"
+                          <textarea
+                            rows={3}
+                            className="w-full p-2 bg-[#121214] border border-white/10 rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#A7C7E7] resize-y leading-relaxed"
+                            placeholder="例如：&#10;1. 步行至 XXX 站 (約 5 分鐘)&#10;2. 搭乘日比谷線至築地站&#10;3. A1 出口步行 3 分鐘抵達"
                             value={transitDetails}
                             onChange={(e) => setTransitDetails(e.target.value)}
                           />
@@ -645,20 +623,6 @@ export default function ItineraryItemEditor({
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-              備註說明 (行程細節、注意事項)
-            </label>
-            <textarea
-              className="w-full px-3 py-2 bg-[#121214] border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#A7C7E7] focus:bg-[#121214] transition"
-              rows={2}
-              placeholder="例如：入園門票須先拿好，推薦買草莓大幅。"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
           </div>
 
         </form>

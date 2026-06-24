@@ -276,14 +276,15 @@ export default function CalendarGrid({
               const originalTransitStart = currItem.startMinutes - duration;
               let topPos = originalTransitStart;
               let heightPos = duration;
-              let displayTitle = currItem.transitDetails || '移動中';
+              const firstLine = (currItem.transitDetails || '').split('\n').map(l => l.trim()).filter(l => l.length > 0)[0] || '移動中';
+              let displayTitle = firstLine;
 
               if (originalTransitStart < 0) {
                 // If it starts on the previous day, clamp it to start at 0 (midnight)
                 // and the height on this day is exactly its end minutes on this day (currItem.startMinutes).
                 topPos = 0;
                 heightPos = currItem.startMinutes;
-                displayTitle = `(跨夜續) ${currItem.transitDetails || '移動中'}`;
+                displayTitle = `(跨夜續) ${firstLine}`;
               }
 
               if (heightPos <= 0) return null; // No portion to show on this day
@@ -362,7 +363,7 @@ export default function CalendarGrid({
                     <div className="overflow-hidden">
                       <p className="text-[10px] sm:text-xs font-semibold text-indigo-300 truncate">
                         <span className="bg-indigo-500/20 text-indigo-200 text-[8px] px-1 py-0.5 rounded font-bold mr-1">跨夜交通</span>
-                        {nextItem.transitDetails || '移動中'}
+                        {(nextItem.transitDetails || '').split('\n').map(l => l.trim()).filter(l => l.length > 0)[0] || '移動中'}
                       </p>
                       <p className="text-[8px] sm:text-[10px] text-indigo-400/80">
                         {duration} 分鐘 (本日 {heightPos} 分鐘，接到隔日的 {nextItem.title})

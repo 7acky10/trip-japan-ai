@@ -691,7 +691,7 @@ export default function App() {
                   items={activeDayItems}
                   activeDate={activeDate}
                   nextDayTransitItems={nextDayTransitItems}
-                  onItemClick={(item) => setEditingItem(item)}
+                  onItemClick={(item) => setViewingItemDetail(item)}
                   onTransitClick={(item) => setViewingItemDetail(item)}
                   onItemTimeUpdate={handleItemTimeUpdate}
                   onAddAtTime={handleAddNewItemAtTime}
@@ -702,7 +702,7 @@ export default function App() {
                   trip={currentTrip}
                   dayTabs={dayTabs}
                   items={itineraryItems.filter((i) => i.tripId === currentTrip.id)}
-                  onItemClick={(item) => setEditingItem(item)}
+                  onItemClick={(item) => setViewingItemDetail(item)}
                   onTransitClick={(item) => setViewingItemDetail(item)}
                   colorPreset={currentTrip.colorPreset}
                   activeDate={activeDate}
@@ -847,11 +847,21 @@ export default function App() {
                   <Ticket className="w-4 h-4" />
                 </span>
                 <div>
-                  <h5 className="text-xs font-bold text-amber-500 leading-none">此行程已預定保留席位</h5>
+                  <h5 className="text-xs font-bold text-amber-500 leading-none">此行程已預約</h5>
                   {viewingItemDetail.reservationTime && (
                     <p className="text-[11px] text-amber-400/80 mt-0.5 font-medium">報到約定時間：{viewingItemDetail.reservationTime}</p>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Notes description */}
+            {viewingItemDetail.notes && (
+              <div className="bg-[#1e1e22] p-3 rounded-xl border border-white/5">
+                <h5 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">備忘備註</h5>
+                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {viewingItemDetail.notes}
+                </p>
               </div>
             )}
 
@@ -873,36 +883,30 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <span className="p-1 px-1.5 bg-[#121214] rounded-md border border-white/5">
-                    {viewingItemDetail.transitMode === 'train' && '🚇'}
-                    {viewingItemDetail.transitMode === 'bus' && '🚌'}
-                    {viewingItemDetail.transitMode === 'walk' && '🚶'}
-                    {viewingItemDetail.transitMode === 'taxi' && '🚖'}
-                    {viewingItemDetail.transitMode === 'flight' && '✈️'}
-                    {viewingItemDetail.transitMode === 'transit' && '🗺️'}
-                  </span>
-                  <div>
-                    <h5 className="text-xs font-bold text-emerald-300">{viewingItemDetail.transitDetails || '公車/地下鐵大眾運輸'}</h5>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="p-1 px-1.5 bg-[#121214] rounded-md border border-white/5">
+                      {viewingItemDetail.transitMode === 'train' && '🚇'}
+                      {viewingItemDetail.transitMode === 'bus' && '🚌'}
+                      {viewingItemDetail.transitMode === 'walk' && '🚶'}
+                      {viewingItemDetail.transitMode === 'taxi' && '🚖'}
+                      {viewingItemDetail.transitMode === 'flight' && '✈️'}
+                      {viewingItemDetail.transitMode === 'transit' && '🗺️'}
+                    </span>
                     <p className="text-[10px] text-emerald-400/80 font-medium">
                       預估乘車時間 {viewingItemDetail.transitDuration} 分鐘{viewingItemDetail.transitCost !== undefined && viewingItemDetail.transitCost !== null && viewingItemDetail.transitCost >= 0 ? ` • ${viewingItemDetail.transitCurrency === '$' ? 'NT$' : viewingItemDetail.transitCurrency || '¥'} ${viewingItemDetail.transitCost}` : ''}
                     </p>
                   </div>
+                  {viewingItemDetail.transitDetails && (
+                    <div className="text-xs text-emerald-300 font-medium whitespace-pre-wrap leading-relaxed break-words text-left pl-1">
+                      {viewingItemDetail.transitDetails}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               <div className="p-3 bg-[#1e1e22] text-gray-500 text-center rounded-xl text-[11px] border border-white/5">
-                無預排之交通工具，此屬當日首個起步行程或不顯示路程。
-              </div>
-            )}
-
-            {/* Notes description */}
-            {viewingItemDetail.notes && (
-              <div className="bg-[#1e1e22] p-3 rounded-xl border border-white/5">
-                <h5 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">精選備忘備註</h5>
-                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {viewingItemDetail.notes}
-                </p>
+                無預排之交通工具，此行程前不顯示交通路程。
               </div>
             )}
 

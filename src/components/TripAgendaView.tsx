@@ -155,39 +155,49 @@ export default function TripAgendaView({
                               {item.transitMode === 'transit' && '🗺️'}
                             </div>
 
-                            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                              <div className="flex flex-wrap items-center gap-1.5 text-emerald-300">
-                                <span className="font-bold text-white/95 text-xs sm:text-sm">
-                                  {idx > 0 ? dayItems[idx - 1].title : '出發'} ➔ {item.title}
-                                </span>
-                                <span className="text-emerald-400/80 font-semibold text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
-                                  {item.transitDuration} 分鐘
-                                </span>
-                              </div>
+                            {(() => {
+                              const lines = (item.transitDetails || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                              const transitTitle = lines.length > 0 ? lines[0] : (idx > 0 ? `${dayItems[idx - 1].title} ➔ ${item.title}` : `前往 ${item.title}`);
+                              const remainingDetails = lines.slice(1).join('\n');
 
-                              {item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 0 && (
-                                <div className="flex items-center space-x-1.5 font-semibold text-emerald-300 shrink-0 text-xs">
-                                  <span>{(item.transitCurrency === '$' ? 'NT$' : item.transitCurrency || '¥')} {item.transitCost}</span>
-                                  {item.googleMapsUrl && (
-                                    <a
-                                      href={item.googleMapsUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="p-1 hover:bg-white/10 rounded transition text-emerald-400"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
+                              return (
+                                <>
+                                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                                    <div className="flex flex-wrap items-center gap-1.5 text-emerald-300">
+                                      <span className="font-bold text-white/95 text-xs sm:text-sm">
+                                        {transitTitle}
+                                      </span>
+                                      <span className="text-emerald-400/80 font-semibold text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                                        {item.transitDuration} 分鐘
+                                      </span>
+                                    </div>
+
+                                    {item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 0 && (
+                                      <div className="flex items-center space-x-1.5 font-semibold text-emerald-300 shrink-0 text-xs">
+                                        <span>{(item.transitCurrency === '$' ? 'NT$' : item.transitCurrency || '¥')} {item.transitCost}</span>
+                                        {item.googleMapsUrl && (
+                                          <a
+                                            href={item.googleMapsUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-1 hover:bg-white/10 rounded transition text-emerald-400"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {remainingDetails && (
+                                    <div className="mt-1 text-[11px] text-[#a1a1aa] leading-relaxed break-words font-normal whitespace-pre-wrap pl-1 text-left">
+                                      {remainingDetails}
+                                    </div>
                                   )}
-                                </div>
-                              )}
-                            </div>
-
-                            {item.transitDetails && (
-                              <div className="mt-1 text-[11px] text-[#8a8a8e] leading-relaxed break-words font-light">
-                                {item.transitDetails}
-                              </div>
-                            )}
+                                </>
+                              );
+                            })()}
                           </div>
                         )}
 
@@ -273,47 +283,57 @@ export default function TripAgendaView({
                           {tomorrowItem.transitMode === 'transit' && '🗺️'}
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] px-1.5 py-0.5 rounded font-sans font-bold shrink-0">
-                                跨夜至隔日
-                              </span>
-                              <span className="font-bold text-white/95 text-xs sm:text-sm">
-                                {tomorrowItem.location ? `${tomorrowItem.location} ➔ ` : ''}{tomorrowItem.title}
-                              </span>
-                              <span className="text-indigo-400/80 font-semibold text-[10px] bg-indigo-500/10 px-1.5 py-0.5 rounded shrink-0">
-                                {duration} 分鐘
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 font-light mt-0.5">
-                              預計於 {formatMinutesToTime(transitStartMinsToday)} 出發，隔日 {formatMinutesToTime(tomorrowItem.startMinutes)} 抵達
-                            </p>
-                          </div>
+                        {(() => {
+                          const lines = (tomorrowItem.transitDetails || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                          const transitTitle = lines.length > 0 ? lines[0] : (tomorrowItem.location ? `${tomorrowItem.location} ➔ ${tomorrowItem.title}` : `前往 ${tomorrowItem.title}`);
+                          const remainingDetails = lines.slice(1).join('\n');
 
-                          {tomorrowItem.transitCost !== undefined && tomorrowItem.transitCost !== null && tomorrowItem.transitCost >= 0 && (
-                            <div className="flex items-center space-x-1.5 font-bold text-indigo-300 shrink-0 text-xs">
-                              <span>{(tomorrowItem.transitCurrency === '$' ? 'NT$' : tomorrowItem.transitCurrency || '¥')} {tomorrowItem.transitCost}</span>
-                              {tomorrowItem.googleMapsUrl && (
-                                <a
-                                  href={tomorrowItem.googleMapsUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1 hover:bg-white/10 rounded transition text-indigo-400"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
+                          return (
+                            <>
+                              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] px-1.5 py-0.5 rounded font-sans font-bold shrink-0">
+                                      跨夜至隔日
+                                    </span>
+                                    <span className="font-bold text-white/95 text-xs sm:text-sm">
+                                      {transitTitle}
+                                    </span>
+                                    <span className="text-indigo-400/80 font-semibold text-[10px] bg-indigo-500/10 px-1.5 py-0.5 rounded shrink-0">
+                                      {duration} 分鐘
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-400 font-light mt-0.5">
+                                    預計於 {formatMinutesToTime(transitStartMinsToday)} 出發，隔日 {formatMinutesToTime(tomorrowItem.startMinutes)} 抵達
+                                  </p>
+                                </div>
+
+                                {tomorrowItem.transitCost !== undefined && tomorrowItem.transitCost !== null && tomorrowItem.transitCost >= 0 && (
+                                  <div className="flex items-center space-x-1.5 font-bold text-indigo-300 shrink-0 text-xs">
+                                    <span>{(tomorrowItem.transitCurrency === '$' ? 'NT$' : tomorrowItem.transitCurrency || '¥')} {tomorrowItem.transitCost}</span>
+                                    {tomorrowItem.googleMapsUrl && (
+                                      <a
+                                        href={tomorrowItem.googleMapsUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="p-1 hover:bg-white/10 rounded transition text-indigo-400"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {remainingDetails && (
+                                <div className="mt-1 text-[11px] text-[#a1a1aa] leading-relaxed break-words font-normal whitespace-pre-wrap pl-1 text-left w-full">
+                                  {remainingDetails}
+                                </div>
                               )}
-                            </div>
-                          )}
-                        </div>
-
-                        {tomorrowItem.transitDetails && (
-                          <div className="mt-1 pl-0 text-[11px] text-gray-400 font-light break-words">
-                            {tomorrowItem.transitDetails}
-                          </div>
-                        )}
+                            </>
+                          );
+                        })()}
                       </div>
                     );
                   })}
