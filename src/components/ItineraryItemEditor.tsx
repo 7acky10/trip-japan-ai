@@ -624,8 +624,8 @@ export default function ItineraryItemEditor({
               /* If no starting location but the user wants to add flight or transport */
               <div className="p-3.5 bg-white/5 rounded-xl border border-white/5 text-left flex items-center justify-between">
                 <div>
-                  <h5 className="text-xs font-semibold text-gray-300">✈️ 規劃班機或首站交通工具</h5>
-                  <p className="text-[10px] text-gray-500 mt-0.5">點擊右側將為本項目解鎖直升客航或前行自訂交通工具。</p>
+                  <h5 className="text-xs font-semibold text-gray-300">規劃交通方式</h5>
+                  <p className="text-[10px] text-gray-500 mt-0.5">選擇航班或設定交通方式。</p>
                 </div>
                 <div className="flex space-x-2">
                   <button

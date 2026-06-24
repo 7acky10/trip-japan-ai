@@ -529,8 +529,8 @@ export default function App() {
   };
 
   // Quick helper to read current day's total budget
-  const activeDayTransitYen = activeDayItems.filter(item => (item.transitCurrency || '¥') === '¥').reduce((sum, item) => sum + (item.transitCost || 0), 0);
-  const activeDayTransitNT = activeDayItems.filter(item => item.transitCurrency === '$').reduce((sum, item) => sum + (item.transitCost || 0), 0);
+  const activeDayTransitYen = activeDayItems.filter(item => (item.transitCurrency || '¥') === '¥' && item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 0).reduce((sum, item) => sum + (item.transitCost || 0), 0);
+  const activeDayTransitNT = activeDayItems.filter(item => item.transitCurrency === '$' && item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 0).reduce((sum, item) => sum + (item.transitCost || 0), 0);
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-[#e0e0e0] flex flex-col font-sans">
@@ -846,7 +846,7 @@ export default function App() {
                   <div>
                     <h5 className="text-xs font-bold text-emerald-300">{viewingItemDetail.transitDetails || '公車/地下鐵大眾運輸'}</h5>
                     <p className="text-[10px] text-emerald-400/80 font-medium">
-                      ⏱️ 預估乘車時間 {viewingItemDetail.transitDuration} 分鐘 • 儲存車費 {viewingItemDetail.transitCurrency === '$' ? 'NT$' : viewingItemDetail.transitCurrency || '¥'} {viewingItemDetail.transitCost}
+                      預估乘車時間 {viewingItemDetail.transitDuration} 分鐘{viewingItemDetail.transitCost !== undefined && viewingItemDetail.transitCost !== null && viewingItemDetail.transitCost >= 0 ? ` • ${viewingItemDetail.transitCurrency === '$' ? 'NT$' : viewingItemDetail.transitCurrency || '¥'} ${viewingItemDetail.transitCost}` : ''}
                     </p>
                   </div>
                 </div>
