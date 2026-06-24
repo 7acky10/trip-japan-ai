@@ -5,6 +5,8 @@ import { X, MapPin, Clock, Check, ChevronRight, ChevronDown, Train, HelpCircle, 
 
 interface ItineraryItemEditorProps {
   item: ItineraryItem;
+  itineraryItems?: ItineraryItem[];
+  tripDays?: { dateString: string; label: string; dayOfWeek: string; formattedDate: string }[];
   previousLocation: string | null;
   onSave: (updatedItem: ItineraryItem) => void;
   onDelete: (id: string) => void;
@@ -13,12 +15,15 @@ interface ItineraryItemEditorProps {
 
 export default function ItineraryItemEditor({
   item,
+  itineraryItems = [],
+  tripDays = [],
   previousLocation,
   onSave,
   onDelete,
   onClose
 }: ItineraryItemEditorProps) {
   const [title, setTitle] = useState(item.title);
+  const [date, setDate] = useState(item.date);
   const [location, setLocation] = useState(item.location);
   const [startTime, setStartTime] = useState(formatMinutesToTime(item.startMinutes));
   const [endTime, setEndTime] = useState(formatMinutesToTime(item.endMinutes));
@@ -33,12 +38,14 @@ export default function ItineraryItemEditor({
   const hasManuallyToggledCrossover = React.useRef(false);
 
   // Auto-detect cross-overnight if end time has been set earlier than start time
+  // ONLY auto-enable to true when endTime is earlier than startTime (endMins < startMins)
+  // NEVER auto-disable to false, in order to preserve existing overnight items or manual selections
   useEffect(() => {
     if (hasManuallyToggledCrossover.current) return;
     const startMins = parseTimeToMinutes(startTime);
     const endMins = parseTimeToMinutes(endTime);
-    if (endMins > 0) {
-      setIsCrossOvernight(endMins < startMins);
+    if (endMins > 0 && endMins < startMins) {
+      setIsCrossOvernight(true);
     }
   }, [startTime, endTime]);
 
@@ -91,20 +98,65 @@ export default function ItineraryItemEditor({
     }
   }, [transitMode, flightNo, flightAirports, flightGate]);
 
-  // Mock transit choices based on previousLocation and current location
-  const transitOptions = previousLocation && location 
-    ? generateMockTransitRoutes(previousLocation, location)
+  // We need to compute the previous location dynamically based on selected date and start time
+  const computedPreviousLocation = React.useMemo(() => {
+    if (!itineraryItems || itineraryItems.length === 0 || !tripDays || tripDays.length === 0) {
+      return previousLocation; // fallback
+    }
+
+    const startMins = parseTimeToMinutes(startTime);
+
+    // 1. Get other items on the SELECTED date
+    const dayItems = itineraryItems
+      .filter(i => i.tripId === item.tripId && i.date === date && i.id !== item.id)
+      .sort((a, b) => a.startMinutes - b.startMinutes);
+
+    // 2. Find the item that ends before the current selected start minutes
+    let lastBefore: ItineraryItem | null = null;
+    for (const i of dayItems) {
+      if (i.endMinutes <= startMins) {
+        if (!lastBefore || i.endMinutes > lastBefore.endMinutes) {
+          lastBefore = i;
+        }
+      }
+    }
+
+    if (lastBefore && lastBefore.location) {
+      return lastBefore.location;
+    }
+
+    // 3. Since there's no previous item on this day, check if we can use the previous day's check-in hotel
+    const itemDateIndex = tripDays.findIndex(tab => tab.dateString === date);
+    if (itemDateIndex > 0) {
+      const checkDateStrings = tripDays.slice(0, itemDateIndex).map(tab => tab.dateString).reverse();
+      for (const dateStr of checkDateStrings) {
+        const hotelsOnDate = itineraryItems
+          .filter(i => i.tripId === item.tripId && i.date === dateStr && i.id !== item.id && (i.isHotel || /飯店|酒店|旅館|民宿|住宿|Hotel|Hostel|Inn|B&B/i.test(i.title)))
+          .sort((a, b) => b.startMinutes - a.startMinutes);
+
+        if (hotelsOnDate.length > 0) {
+          return hotelsOnDate[0].location || null;
+        }
+      }
+    }
+
+    return null;
+  }, [itineraryItems, tripDays, date, startTime, item.tripId, item.id, previousLocation]);
+
+  // Mock transit choices based on computedPreviousLocation and current location
+  const transitOptions = computedPreviousLocation && location 
+    ? generateMockTransitRoutes(computedPreviousLocation, location)
     : [];
 
-  // Update Google Maps URL if either location or previousLocation updates
+  // Update Google Maps URL if either location or computedPreviousLocation updates
   useEffect(() => {
-    if (previousLocation && location && transitMode !== 'flight') {
-      const generatedUrl = makeGoogleMapsDirUrl(previousLocation, location);
+    if (computedPreviousLocation && location && transitMode !== 'flight') {
+      const generatedUrl = makeGoogleMapsDirUrl(computedPreviousLocation, location);
       setMapsUrl(generatedUrl);
     } else {
       setMapsUrl('');
     }
-  }, [previousLocation, location, transitMode]);
+  }, [computedPreviousLocation, location, transitMode]);
 
   const handleApplyTransitOption = (option: { mode: TransitMode; details: string; duration: number; cost: number }) => {
     setTransitMode(option.mode);
@@ -129,6 +181,7 @@ export default function ItineraryItemEditor({
 
     onSave({
       ...item,
+      date,
       title: title.trim() || '未命名行程',
       location: location.trim(),
       startMinutes: startMins,
@@ -187,6 +240,27 @@ export default function ItineraryItemEditor({
         {/* Content */}
         <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 text-gray-300">
           
+          {/* 行程日期選擇 (Date Selection) */}
+          {tripDays && tripDays.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5" htmlFor="date-inp">
+                行程日期
+              </label>
+              <select
+                id="date-inp"
+                className="w-full px-3 py-2.5 bg-[#121214] border border-white/10 rounded-lg text-white font-medium focus:outline-none focus:border-[#A7C7E7] focus:bg-[#121214] transition cursor-pointer"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              >
+                {tripDays.map((day) => (
+                  <option key={day.dateString} value={day.dateString} className="bg-[#0c0c0e]">
+                    {day.dateString} ({day.dayOfWeek}) - {day.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Card Title */}
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5" htmlFor="title-inp">
@@ -346,7 +420,7 @@ export default function ItineraryItemEditor({
                       onChange={(e) => setIsHotel(e.target.checked)}
                     />
                     <span className="text-sm font-semibold text-white">
-                      今天是住宿飯店 / 住宿點
+                      住宿處
                     </span>
                   </label>
                 </div>
@@ -359,9 +433,9 @@ export default function ItineraryItemEditor({
               <h4 className="text-sm font-semibold text-white flex items-center space-x-1.5">
                 <span>--前往此地的交通工具--</span>
               </h4>
-              {previousLocation ? (
+              {computedPreviousLocation ? (
                 <span className="text-xs text-gray-300 bg-white/5 border border-white/5 px-2.5 py-1 rounded-full">
-                  起點: {previousLocation}
+                  起點: {computedPreviousLocation}
                 </span>
               ) : (
                 <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/10 px-2.5 py-1 rounded-full">
@@ -371,7 +445,7 @@ export default function ItineraryItemEditor({
             </div>
 
             {/* Main Interactive Configuration area */}
-            {(previousLocation || transitMode !== 'none') ? (
+            {(computedPreviousLocation || transitMode !== 'none') ? (
               <div className="space-y-3 bg-[#121214] p-3.5 rounded-xl border border-white/5">
                 {transitMode === 'flight' ? (
                   /* Flight Input Mode */

@@ -390,6 +390,67 @@ export default function App() {
     setDeleteConfirmTripId(null);
   };
 
+  // Automatically recalculate and align Google Maps routing URLs when item sequence or details change
+  const recalculateGoogleMapsUrls = (itemsList: ItineraryItem[]): ItineraryItem[] => {
+    if (!currentTrip) return itemsList;
+
+    // Helper functions inside/used by the mapper
+    const getPrevNightHotel = (activeItem: ItineraryItem, list: ItineraryItem[]): ItineraryItem | null => {
+      const tabs = generateDaysList(currentTrip.startDate, currentTrip.endDate);
+      const itemDateIndex = tabs.findIndex(tab => tab.dateString === activeItem.date);
+      if (itemDateIndex <= 0) return null;
+
+      const checkDateStrings = tabs.slice(0, itemDateIndex).map(tab => tab.dateString).reverse();
+      for (const dateStr of checkDateStrings) {
+        const hotelsOnDate = list
+          .filter(item => item.tripId === activeItem.tripId && item.date === dateStr && (item.isHotel || /飯店|酒店|旅館|民宿|住宿|Hotel|Hostel|Inn|B&B/i.test(item.title)))
+          .sort((a, b) => b.startMinutes - a.startMinutes);
+        if (hotelsOnDate.length > 0) {
+          return hotelsOnDate[0];
+        }
+      }
+      return null;
+    };
+
+    const getPrevLocation = (activeItem: ItineraryItem, list: ItineraryItem[]): string | null => {
+      const dayItems = list
+        .filter(item => item.tripId === activeItem.tripId && item.date === activeItem.date && item.id !== activeItem.id)
+        .sort((a, b) => a.startMinutes - b.startMinutes);
+
+      let lastBefore: ItineraryItem | null = null;
+      for (const item of dayItems) {
+        if (item.endMinutes <= activeItem.startMinutes) {
+          if (!lastBefore || item.endMinutes > lastBefore.endMinutes) {
+            lastBefore = item;
+          }
+        }
+      }
+
+      if (lastBefore && lastBefore.location) {
+        return lastBefore.location;
+      }
+
+      const prevHotel = getPrevNightHotel(activeItem, list);
+      return prevHotel && prevHotel.location ? prevHotel.location : null;
+    };
+
+    // Map through the list and update googleMapsUrl if needed
+    return itemsList.map(item => {
+      if (item.tripId !== currentTrip.id) return item;
+      if (item.transitMode === 'flight') {
+        return { ...item, googleMapsUrl: '' };
+      }
+      // Re-evaluate previous location
+      const prevLoc = getPrevLocation(item, itemsList);
+      if (prevLoc && item.location) {
+        const generatedUrl = makeGoogleMapsDirUrl(prevLoc, item.location);
+        return { ...item, googleMapsUrl: generatedUrl };
+      } else {
+        return { ...item, googleMapsUrl: '' };
+      }
+    });
+  };
+
   // Save or edit an Itinerary Item
   const handleSaveItineraryItem = (savedItem: ItineraryItem) => {
     const exists = itineraryItems.some(i => i.id === savedItem.id);
@@ -399,8 +460,9 @@ export default function App() {
     } else {
       updated = [...itineraryItems, savedItem];
     }
-    setItineraryItems(updated);
-    saveToLocalStorage(trips, updated);
+    const finalUpdated = recalculateGoogleMapsUrls(updated);
+    setItineraryItems(finalUpdated);
+    saveToLocalStorage(trips, finalUpdated);
     setEditingItem(null);
     setViewingItemDetail(null);
   };
@@ -408,8 +470,9 @@ export default function App() {
   // Delete Itinerary Item
   const handleDeleteItineraryItem = (id: string) => {
     const updated = itineraryItems.filter(i => i.id !== id);
-    setItineraryItems(updated);
-    saveToLocalStorage(trips, updated);
+    const finalUpdated = recalculateGoogleMapsUrls(updated);
+    setItineraryItems(finalUpdated);
+    saveToLocalStorage(trips, finalUpdated);
     setEditingItem(null);
     setViewingItemDetail(null);
   };
@@ -427,8 +490,9 @@ export default function App() {
       }
       return item;
     });
-    setItineraryItems(updated);
-    saveToLocalStorage(trips, updated);
+    const finalUpdated = recalculateGoogleMapsUrls(updated);
+    setItineraryItems(finalUpdated);
+    saveToLocalStorage(trips, finalUpdated);
   };
 
   // Add Item quickly at empty grid slot click
@@ -775,6 +839,8 @@ export default function App() {
       {editingItem && (
         <ItineraryItemEditor
           item={editingItem}
+          itineraryItems={itineraryItems}
+          tripDays={currentTrip ? generateDaysList(currentTrip.startDate, currentTrip.endDate) : []}
           previousLocation={getPreviousLocationOf(editingItem)}
           onSave={handleSaveItineraryItem}
           onDelete={() => handleDeleteItineraryItem(editingItem.id)}
