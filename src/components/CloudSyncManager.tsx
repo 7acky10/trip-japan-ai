@@ -35,6 +35,11 @@ export default function CloudSyncManager({
     }
   }, [currentTrip]);
 
+  // Clear error whenever current trip ID, sync ID, or sync code input changes
+  useEffect(() => {
+    setError("");
+  }, [currentTrip?.id, currentTrip?.syncId, syncCodeInput]);
+
   // Regular Polling loop: Read cloud trip immediately on mount/syncId change and then poll every 3 seconds
   useEffect(() => {
     if (!currentTrip || !currentTrip.syncId) {

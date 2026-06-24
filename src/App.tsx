@@ -6,6 +6,7 @@ import CalendarGrid from './components/CalendarGrid';
 import ItineraryItemEditor from './components/ItineraryItemEditor';
 import TripAgendaView from './components/TripAgendaView';
 import CloudSyncManager from './components/CloudSyncManager';
+import TripDuplicateModal from './components/TripDuplicateModal';
 
 // Standard icons from lucide-react
 import { 
@@ -28,7 +29,8 @@ import {
   Map,
   Ticket,
   Coins,
-  Route
+  Route,
+  Copy
 } from 'lucide-react';
 
 const LOCAL_STORAGE_TRIPS_KEY = 'travel_itinerary_trips_data';
@@ -209,6 +211,22 @@ export default function App() {
   
   // Safe delete state without window.confirm (since iframes block it)
   const [deleteConfirmTripId, setDeleteConfirmTripId] = useState<string | null>(null);
+
+  // Copy / Duplicate trip state
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  const handleDuplicateTripConfirm = (newTrip: Trip, newItems: ItineraryItem[]) => {
+    const updatedTrips = [newTrip, ...trips];
+    const updatedItems = [...itineraryItems, ...newItems];
+
+    setTrips(updatedTrips);
+    setItineraryItems(updatedItems);
+    setCurrentTrip(newTrip);
+    setActiveDate(newTrip.startDate);
+
+    saveToLocalStorage(updatedTrips, updatedItems);
+    setShowDuplicateModal(false);
+  };
 
   // Sync / Shared Trip callbacks
   const handleTripSyncIdUpdate = (updatedTrip: Trip) => {
@@ -720,16 +738,27 @@ export default function App() {
               <p className="text-[11px] text-[#8a8a8e] mt-0.5 leading-relaxed">
                 您的行程儲存於瀏覽器地端的本地資料庫中 (LocalStorage)。
               </p>
-              <button
-                onClick={handleDeleteTrip}
-                className={`mt-3.5 px-3 py-1.5 text-xs rounded-lg transition font-medium cursor-pointer border ${
-                  deleteConfirmTripId === currentTrip.id
-                    ? 'bg-red-500 text-white border-red-600 hover:bg-red-600 animate-pulse'
-                    : 'text-red-400 hover:text-red-300 border-red-500/30 hover:bg-red-500/10'
-                }`}
-              >
-                {deleteConfirmTripId === currentTrip.id ? '⚠️ 再次點選以確認刪除 (無法還原)' : '刪除此整個旅程計畫'}
-              </button>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-3.5">
+                <button
+                  onClick={() => setShowDuplicateModal(true)}
+                  className="px-3.5 py-1.5 text-xs font-bold text-[#A7C7E7] bg-[#A7C7E7]/10 hover:bg-[#A7C7E7]/20 rounded-lg border border-[#A7C7E7]/20 flex items-center justify-center space-x-1.5 transition cursor-pointer w-full sm:w-auto select-none"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>建立此旅程副本</span>
+                </button>
+
+                <button
+                  onClick={handleDeleteTrip}
+                  className={`px-3.5 py-1.5 text-xs rounded-lg transition font-medium cursor-pointer border w-full sm:w-auto ${
+                    deleteConfirmTripId === currentTrip.id
+                      ? 'bg-red-500 text-white border-red-600 hover:bg-red-600 animate-pulse'
+                      : 'text-red-400 hover:text-red-300 border-red-500/30 hover:bg-red-500/10'
+                  }`}
+                >
+                  {deleteConfirmTripId === currentTrip.id ? '⚠️ 再次點選以確認刪除 (無法還原)' : '刪除此整個旅程計畫'}
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -761,6 +790,16 @@ export default function App() {
           onSave={handleSaveItineraryItem}
           onDelete={() => handleDeleteItineraryItem(editingItem.id)}
           onClose={() => setEditingItem(null)}
+        />
+      )}
+
+      {/* 1.1 DUPLICATE TRIP MODAL POPUP */}
+      {showDuplicateModal && currentTrip && (
+        <TripDuplicateModal
+          currentTrip={currentTrip}
+          items={itineraryItems.filter((i) => i.tripId === currentTrip.id)}
+          onConfirm={handleDuplicateTripConfirm}
+          onClose={() => setShowDuplicateModal(false)}
         />
       )}
 
