@@ -127,7 +127,7 @@ export default function TripAgendaView({
                     return (
                       <div key={item.id} className="space-y-4 relative">
                         {/* Timeline node dot for the event */}
-                        <div className={`absolute left-[-21px] top-6 -translate-x-1/2 w-2.5 h-2.5 rounded-full border-2 border-[#0a0a0c] z-10 ${
+                        <div className={`absolute left-[-17px] top-6 -translate-x-1/2 w-2.5 h-2.5 rounded-full border-2 border-[#0a0a0c] z-20 ${
                           isContinuedFromYesterday 
                             ? 'bg-indigo-400' 
                             : 'bg-[#A7C7E7]'
@@ -140,13 +140,13 @@ export default function TripAgendaView({
                               e.stopPropagation();
                               onTransitClick?.(item);
                             }}
-                            className="relative -ml-[22px] pl-7 pr-3 py-2.5 hover:bg-white/2 transition rounded-xl text-xs text-left cursor-pointer duration-150 group/transit"
+                            className="relative pl-2 pr-3 py-2.5 hover:bg-white/2 transition rounded-xl text-xs text-left cursor-pointer duration-150 group/transit"
                           >
                             {/* Accent timeline rail for transit */}
-                            <div className="absolute left-[1px] top-0 bottom-0 w-0.5 bg-emerald-500/30 group-hover/transit:bg-emerald-500/50" />
+                            <div className="absolute left-[-17px] -translate-x-1/2 top-0 bottom-0 w-[2px] bg-emerald-500/30 group-hover/transit:bg-emerald-500/50 z-10" />
                             
                             {/* Transit bubble */}
-                            <div className="absolute left-[1px] -translate-x-1/2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0a0c] border border-emerald-500/30 flex items-center justify-center text-[11px] shadow-sm z-10 transition group-hover/transit:border-emerald-500/50">
+                            <div className="absolute left-[-17px] -translate-x-1/2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0a0c] border border-emerald-500/30 flex items-center justify-center text-[11px] shadow-sm z-20 transition group-hover/transit:border-emerald-500/50">
                               {item.transitMode === 'train' && '🚇'}
                               {item.transitMode === 'bus' && '🚌'}
                               {item.transitMode === 'walk' && '🚶'}
@@ -258,13 +258,13 @@ export default function TripAgendaView({
                       <div 
                         key={`cross-transit-agenda-${tomorrowItem.id}`}
                         onClick={() => onTransitClick?.(tomorrowItem)}
-                        className="relative -ml-[18px] pl-7 pr-3 py-3 hover:bg-white/2 transition rounded-xl text-xs text-left cursor-pointer duration-150 group/transit"
+                        className="relative pl-2 pr-3 py-3 hover:bg-white/2 transition rounded-xl text-xs text-left cursor-pointer duration-150 group/transit"
                       >
                         {/* Accent timeline rail for cross-overnight transit */}
-                        <div className="absolute left-[1px] top-0 bottom-0 w-0.5 bg-indigo-500/30 group-hover/transit:bg-indigo-500/50" />
+                        <div className="absolute left-[-17px] -translate-x-1/2 top-0 bottom-0 w-[2px] bg-indigo-500/30 group-hover/transit:bg-indigo-500/50 z-10" />
                         
                         {/* Transit bubble */}
-                        <div className="absolute left-[1px] -translate-x-1/2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0a0c] border border-indigo-500/30 flex items-center justify-center text-[11px] shadow-sm z-10 transition group-hover/transit:border-indigo-500/50">
+                        <div className="absolute left-[-17px] -translate-x-1/2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0a0a0c] border border-indigo-500/30 flex items-center justify-center text-[11px] shadow-sm z-20 transition group-hover/transit:border-indigo-500/50">
                           {tomorrowItem.transitMode === 'train' && '🚇'}
                           {tomorrowItem.transitMode === 'bus' && '🚌'}
                           {tomorrowItem.transitMode === 'walk' && '🚶'}

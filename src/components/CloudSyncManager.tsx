@@ -35,24 +35,41 @@ export default function CloudSyncManager({
     }
   }, [currentTrip]);
 
-  // Regular Polling loop: Every 7 seconds read cloud trip
+  // Regular Polling loop: Read cloud trip immediately on mount/syncId change and then poll every 3 seconds
+  useEffect(() => {
+    if (!currentTrip || !currentTrip.syncId) {
+      initialLoadDone.current = true;
+      return;
+    }
+
+    // Fetch immediately on mount or when switching trips
+    fetchCloudTrip(currentTrip.syncId, false);
+
+    // Set up polling fetch (every 3 seconds for fast, real-time updates)
+    const timer = setInterval(() => {
+      fetchCloudTrip(currentTrip.syncId!, false);
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [currentTrip?.syncId]);
+
+  // Upload local changes when local items state changes, avoiding loops and running only after initial sync load completes
   useEffect(() => {
     if (!currentTrip || !currentTrip.syncId) return;
 
-    // First, push local change if local items changed
     const itemsJsonStr = JSON.stringify(items);
-    if (initialLoadDone.current && prevItemsRef.current !== itemsJsonStr) {
+    
+    // If initial loading from the cloud has not completed yet, set reference to prevent overwriting cloud updates
+    if (!initialLoadDone.current) {
+      prevItemsRef.current = itemsJsonStr;
+      return;
+    }
+
+    if (prevItemsRef.current !== itemsJsonStr) {
       uploadLocalChanges(currentTrip.syncId, currentTrip, items);
       prevItemsRef.current = itemsJsonStr;
     }
-
-    // Set up polling fetch
-    const timer = setInterval(() => {
-      fetchCloudTrip(currentTrip.syncId!, false);
-    }, 7000);
-
-    return () => clearInterval(timer);
-  }, [currentTrip, items]);
+  }, [items, currentTrip?.id]);
 
   const uploadLocalChanges = async (syncId: string, trip: Trip, localItems: ItineraryItem[]) => {
     try {
@@ -75,7 +92,16 @@ export default function CloudSyncManager({
   const fetchCloudTrip = async (syncId: string, showSpinner = true) => {
     try {
       if (showSpinner) setIsSyncing(true);
-      const res = await fetch(`/api/share/${syncId}`);
+      
+      // Use cache-busting timestamp parameter and standard cache prevention headers to prevent aggressive mobile caching
+      const res = await fetch(`/api/share/${syncId}?t=${Date.now()}`, {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0"
+        }
+      });
+      
       if (!res.ok) {
         throw new Error("Unable to fetch shared trip from cloud");
       }
@@ -137,7 +163,14 @@ export default function CloudSyncManager({
     setError("");
 
     try {
-      const res = await fetch(`/api/share/${cleanCode}`);
+      // Use cache-busting timestamp parameter and cache prevention headers on manual joins as well
+      const res = await fetch(`/api/share/${cleanCode}?t=${Date.now()}`, {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0"
+        }
+      });
       if (!res.ok) {
         throw new Error("找不到對應的雲端行程！代碼可能正確性不足或已被移除。");
       }
