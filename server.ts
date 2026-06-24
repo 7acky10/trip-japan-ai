@@ -18,12 +18,26 @@ async function startServer() {
   let useDefaultFirestore = false;
 
   try {
+    let dbId = "(default)";
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      try {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        if (config.firestoreDatabaseId) {
+          dbId = config.firestoreDatabaseId;
+        }
+      } catch (err) {
+        console.warn("Failed to parse firebase-applet-config.json on startup:", err);
+      }
+    }
+
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       console.log("Found FIREBASE_SERVICE_ACCOUNT environment variable, parsing credentials...");
       try {
         const credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         firestore = new Firestore({
           projectId: credentials.project_id,
+          databaseId: dbId,
           credentials: {
             client_email: credentials.client_email,
             private_key: credentials.private_key,
@@ -37,7 +51,7 @@ async function startServer() {
             private_key: credentials.private_key,
           },
         });
-        console.log("Firestore client initialized with explicit Service Account credentials");
+        console.log(`Firestore client initialized with explicit Service Account credentials. Project: ${credentials.project_id}, Database: ${dbId}`);
       } catch (err: any) {
         console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:", err);
         firestoreBroken = true;
@@ -45,13 +59,12 @@ async function startServer() {
         defaultFirestore = new Firestore();
       }
     } else {
-      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
       if (fs.existsSync(configPath)) {
         const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-        console.log("Initializing Firestore with config for project:", config.projectId);
+        console.log(`Initializing Firestore with config for project: ${config.projectId}, Database: ${dbId}`);
         firestore = new Firestore({
           projectId: config.projectId,
-          databaseId: config.firestoreDatabaseId || "(default)",
+          databaseId: dbId,
         });
         defaultFirestore = new Firestore({
           projectId: config.projectId,

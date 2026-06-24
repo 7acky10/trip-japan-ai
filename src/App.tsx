@@ -603,7 +603,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setViewMode('agenda');
-                      // 點選總覽路引的時候也要滑動到當天的位置 (若今日期在行程區間中)
+                      // 點選旅程總覽的時候也要滑動到當天的位置 (若今日期在行程區間中)
                       const todayStr = getLocalDateString();
                       if (currentTrip && todayStr >= currentTrip.startDate && todayStr <= currentTrip.endDate) {
                         setActiveDate(todayStr);
@@ -616,7 +616,7 @@ export default function App() {
                     }`}
                   >
                     <List className="w-3.5 h-3.5" />
-                    <span>總覽路引</span>
+                    <span>旅程總覽</span>
                   </button>
                 </div>
 
