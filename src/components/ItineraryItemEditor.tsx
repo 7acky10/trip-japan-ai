@@ -30,13 +30,15 @@ export default function ItineraryItemEditor({
   const [showMoreSettings, setShowMoreSettings] = useState(
     item.endMinutes > 1440 || !!item.isReserved || !!item.isHotel
   );
+  const hasManuallyToggledCrossover = React.useRef(false);
 
   // Auto-detect cross-overnight if end time has been set earlier than start time
   useEffect(() => {
+    if (hasManuallyToggledCrossover.current) return;
     const startMins = parseTimeToMinutes(startTime);
     const endMins = parseTimeToMinutes(endTime);
-    if (endMins < startMins && endMins > 0) {
-      setIsCrossOvernight(true);
+    if (endMins > 0) {
+      setIsCrossOvernight(endMins < startMins);
     }
   }, [startTime, endTime]);
 
@@ -286,7 +288,10 @@ export default function ItineraryItemEditor({
                       type="checkbox"
                       className="w-4 h-4 rounded border-white/10 text-indigo-400 focus:ring-indigo-400 bg-black/20"
                       checked={isCrossOvernight}
-                      onChange={(e) => setIsCrossOvernight(e.target.checked)}
+                      onChange={(e) => {
+                        hasManuallyToggledCrossover.current = true;
+                        setIsCrossOvernight(e.target.checked);
+                      }}
                     />
                     <span className="text-sm font-semibold text-white">
                       此行程/交通跨夜 (時間跨越隔天)
@@ -484,7 +489,7 @@ export default function ItineraryItemEditor({
                       <p className="text-[10px] text-[#A7C7E7] font-semibold mb-0.5">預覽輸出成果：</p>
                       <p className="text-xs font-mono text-gray-300">
                         {transitDetails || "未輸入完整航班資訊"}
-                        {transitCost ? ` | ${transitCurrency}${transitCost}` : ""}
+                        {transitCost && transitCost >= 1 ? ` | ${transitCurrency}${transitCost}` : ""}
                       </p>
                     </div>
                   </div>

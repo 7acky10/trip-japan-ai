@@ -172,7 +172,7 @@ export default function TripAgendaView({
                                       </span>
                                     </div>
 
-                                    {item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 0 && (
+                                    {item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 1 && (
                                       <div className="flex items-center space-x-1.5 font-semibold text-emerald-300 shrink-0 text-xs">
                                         <span>{(item.transitCurrency === '$' ? 'NT$' : item.transitCurrency || '¥')} {item.transitCost}</span>
                                         {item.googleMapsUrl && (
@@ -308,7 +308,7 @@ export default function TripAgendaView({
                                   </p>
                                 </div>
 
-                                {tomorrowItem.transitCost !== undefined && tomorrowItem.transitCost !== null && tomorrowItem.transitCost >= 0 && (
+                                {tomorrowItem.transitCost !== undefined && tomorrowItem.transitCost !== null && tomorrowItem.transitCost >= 1 && (
                                   <div className="flex items-center space-x-1.5 font-bold text-indigo-300 shrink-0 text-xs">
                                     <span>{(tomorrowItem.transitCurrency === '$' ? 'NT$' : tomorrowItem.transitCurrency || '¥')} {tomorrowItem.transitCost}</span>
                                     {tomorrowItem.googleMapsUrl && (

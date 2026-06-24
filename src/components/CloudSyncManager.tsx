@@ -26,6 +26,12 @@ export default function CloudSyncManager({
   const prevItemsRef = useRef<string>("");
   const initialLoadDone = useRef<boolean>(false);
 
+  // Store the latest props in a ref to avoid stale closure issues in the setInterval polling loop
+  const latestProps = useRef({ currentTrip, items, onSyncReceived, onTripUpdated });
+  useEffect(() => {
+    latestProps.current = { currentTrip, items, onSyncReceived, onTripUpdated };
+  });
+
   // Auto parsing URL search param to join a trip seamlessly if ?join=abcde is in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -33,7 +39,7 @@ export default function CloudSyncManager({
     if (joinCode && joinCode.length === 6 && (!currentTrip || currentTrip.syncId !== joinCode)) {
       handleJoinTripDirectly(joinCode);
     }
-  }, [currentTrip]);
+  }, [currentTrip?.syncId]);
 
   // Clear error whenever current trip ID, sync ID, or sync code input changes
   useEffect(() => {
@@ -42,17 +48,21 @@ export default function CloudSyncManager({
 
   // Regular Polling loop: Read cloud trip immediately on mount/syncId change and then poll every 3 seconds
   useEffect(() => {
-    if (!currentTrip || !currentTrip.syncId) {
+    const activeSyncId = latestProps.current.currentTrip?.syncId;
+    if (!latestProps.current.currentTrip || !activeSyncId) {
       initialLoadDone.current = true;
       return;
     }
 
     // Fetch immediately on mount or when switching trips
-    fetchCloudTrip(currentTrip.syncId, false);
+    fetchCloudTrip(activeSyncId, false);
 
     // Set up polling fetch (every 3 seconds for fast, real-time updates)
     const timer = setInterval(() => {
-      fetchCloudTrip(currentTrip.syncId!, false);
+      const currentActiveSyncId = latestProps.current.currentTrip?.syncId;
+      if (currentActiveSyncId) {
+        fetchCloudTrip(currentActiveSyncId, false);
+      }
     }, 3000);
 
     return () => clearInterval(timer);
@@ -60,7 +70,8 @@ export default function CloudSyncManager({
 
   // Upload local changes when local items state changes, avoiding loops and running only after initial sync load completes
   useEffect(() => {
-    if (!currentTrip || !currentTrip.syncId) return;
+    const activeTrip = latestProps.current.currentTrip;
+    if (!activeTrip || !activeTrip.syncId) return;
 
     const itemsJsonStr = JSON.stringify(items);
     
@@ -71,7 +82,7 @@ export default function CloudSyncManager({
     }
 
     if (prevItemsRef.current !== itemsJsonStr) {
-      uploadLocalChanges(currentTrip.syncId, currentTrip, items);
+      uploadLocalChanges(activeTrip.syncId, activeTrip, items);
       prevItemsRef.current = itemsJsonStr;
     }
   }, [items, currentTrip?.id]);
@@ -112,11 +123,11 @@ export default function CloudSyncManager({
       }
       const data = await res.json();
       const fetchedItemsStr = JSON.stringify(data.items);
-      const localItemsStr = JSON.stringify(items);
+      const localItemsStr = JSON.stringify(latestProps.current.items);
 
       // Only invoke callback if there's a real server discrepancy to prevent render loops
       if (fetchedItemsStr !== localItemsStr) {
-        onSyncReceived(data.trip, data.items);
+        latestProps.current.onSyncReceived(data.trip, data.items);
         prevItemsRef.current = fetchedItemsStr;
       }
       initialLoadDone.current = true;

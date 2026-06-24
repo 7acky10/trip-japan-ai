@@ -314,7 +314,7 @@ export default function CalendarGrid({
                   </div>
 
                   <div className="text-right shrink-0">
-                    {currItem.transitCost !== undefined && currItem.transitCost !== null && currItem.transitCost >= 0 && (
+                    {currItem.transitCost !== undefined && currItem.transitCost !== null && currItem.transitCost >= 1 && (
                       <span className="text-[10px] sm:text-xs font-extrabold text-emerald-300 bg-[#1e1e22]/80 border border-emerald-500/20 px-1.5 py-0.5 rounded">
                         {(currItem.transitCurrency === '$' ? 'NT$' : currItem.transitCurrency || '¥')} {currItem.transitCost}
                       </span>
@@ -372,7 +372,7 @@ export default function CalendarGrid({
                   </div>
 
                   <div className="text-right shrink-0">
-                    {nextItem.transitCost !== undefined && nextItem.transitCost !== null && nextItem.transitCost >= 0 && (
+                    {nextItem.transitCost !== undefined && nextItem.transitCost !== null && nextItem.transitCost >= 1 && (
                       <span className="text-[10px] sm:text-xs font-extrabold text-indigo-300 bg-[#1e1e22]/80 border border-indigo-500/20 px-1.5 py-0.5 rounded">
                         {(nextItem.transitCurrency === '$' ? 'NT$' : nextItem.transitCurrency || '¥')} {nextItem.transitCost}
                       </span>

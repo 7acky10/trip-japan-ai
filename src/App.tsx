@@ -883,7 +883,7 @@ export default function App() {
                       {viewingItemDetail.transitMode === 'transit' && '🚇'}
                     </span>
                     <p className="text-[10px] text-emerald-400/80 font-medium">
-                      預估乘車時間 {viewingItemDetail.transitDuration} 分鐘{viewingItemDetail.transitCost !== undefined && viewingItemDetail.transitCost !== null && viewingItemDetail.transitCost >= 0 ? ` • ${viewingItemDetail.transitCurrency === '$' ? 'NT$' : viewingItemDetail.transitCurrency || '¥'} ${viewingItemDetail.transitCost}` : ''}
+                      預估乘車時間 {viewingItemDetail.transitDuration} 分鐘{viewingItemDetail.transitCost !== undefined && viewingItemDetail.transitCost !== null && viewingItemDetail.transitCost >= 1 ? ` • ${viewingItemDetail.transitCurrency === '$' ? 'NT$' : viewingItemDetail.transitCurrency || '¥'} ${viewingItemDetail.transitCost}` : ''}
                     </p>
                   </div>
                   {viewingItemDetail.transitDetails && (
