@@ -200,7 +200,14 @@ export default function TripAgendaView({
                                               {children}
                                             </a>
                                           ),
-                                          p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                                          p: ({ children }) => <p className="whitespace-pre-wrap min-h-[1.25em] my-1">{children}</p>,
+                                          h1: ({ children }) => <h1 className="text-[11px] font-extrabold text-white mt-2.5 mb-1">{children}</h1>,
+                                          h2: ({ children }) => <h2 className="text-[11px] font-bold text-white mt-2 mb-0.5">{children}</h2>,
+                                          h3: ({ children }) => <h3 className="text-[11px] font-bold text-white mt-1.5 mb-0.5">{children}</h3>,
+                                          h4: ({ children }) => <h4 className="text-[11px] font-semibold text-white mt-1">{children}</h4>,
+                                          ul: ({ children }) => <ul className="list-disc list-inside pl-0.5 my-1 space-y-0.5">{children}</ul>,
+                                          ol: ({ children }) => <ol className="list-decimal list-inside pl-0.5 my-1 space-y-0.5">{children}</ol>,
+                                          li: ({ children }) => <li className="my-0.5">{children}</li>
                                         }}
                                       >
                                         {remainingDetails}
@@ -270,7 +277,14 @@ export default function TripAgendaView({
                                       {children}
                                     </a>
                                   ),
-                                  p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                                  p: ({ children }) => <p className="whitespace-pre-wrap min-h-[1.25em] my-1">{children}</p>,
+                                  h1: ({ children }) => <h1 className="text-[11px] font-extrabold text-white mt-2.5 mb-1">{children}</h1>,
+                                  h2: ({ children }) => <h2 className="text-[11px] font-bold text-white mt-2 mb-0.5">{children}</h2>,
+                                  h3: ({ children }) => <h3 className="text-[11px] font-bold text-white mt-1.5 mb-0.5">{children}</h3>,
+                                  h4: ({ children }) => <h4 className="text-[11px] font-semibold text-white mt-1">{children}</h4>,
+                                  ul: ({ children }) => <ul className="list-disc list-inside pl-0.5 my-1 space-y-0.5">{children}</ul>,
+                                  ol: ({ children }) => <ol className="list-decimal list-inside pl-0.5 my-1 space-y-0.5">{children}</ol>,
+                                  li: ({ children }) => <li className="my-0.5">{children}</li>
                                 }}
                               >
                                 {item.notes}
@@ -358,7 +372,14 @@ export default function TripAgendaView({
                                           {children}
                                         </a>
                                       ),
-                                      p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                                      p: ({ children }) => <p className="whitespace-pre-wrap min-h-[1.25em] my-1">{children}</p>,
+                                      h1: ({ children }) => <h1 className="text-[11px] font-extrabold text-white mt-2.5 mb-1">{children}</h1>,
+                                      h2: ({ children }) => <h2 className="text-[11px] font-bold text-white mt-2 mb-0.5">{children}</h2>,
+                                      h3: ({ children }) => <h3 className="text-[11px] font-bold text-white mt-1.5 mb-0.5">{children}</h3>,
+                                      h4: ({ children }) => <h4 className="text-[11px] font-semibold text-white mt-1">{children}</h4>,
+                                      ul: ({ children }) => <ul className="list-disc list-inside pl-0.5 my-1 space-y-0.5">{children}</ul>,
+                                      ol: ({ children }) => <ol className="list-decimal list-inside pl-0.5 my-1 space-y-0.5">{children}</ol>,
+                                      li: ({ children }) => <li className="my-0.5">{children}</li>
                                     }}
                                   >
                                     {remainingDetails}

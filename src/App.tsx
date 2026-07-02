@@ -923,7 +923,14 @@ export default function App() {
                           {children}
                         </a>
                       ),
-                      p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                      p: ({ children }) => <p className="whitespace-pre-wrap min-h-[1.25em] my-1.5">{children}</p>,
+                      h1: ({ children }) => <h1 className="text-sm font-extrabold text-white mt-3 mb-1">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-xs font-bold text-white mt-2.5 mb-1">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-xs font-bold text-white mt-2 mb-0.5">{children}</h3>,
+                      h4: ({ children }) => <h4 className="text-xs font-semibold text-white mt-1.5 mb-0.5">{children}</h4>,
+                      ul: ({ children }) => <ul className="list-disc list-inside pl-1 my-1.5 space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside pl-1 my-1.5 space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="my-0.5">{children}</li>
                     }}
                   >
                     {viewingItemDetail.notes}
@@ -973,7 +980,14 @@ export default function App() {
                               {children}
                             </a>
                           ),
-                          p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                          p: ({ children }) => <p className="whitespace-pre-wrap min-h-[1.25em] my-1.5">{children}</p>,
+                          h1: ({ children }) => <h1 className="text-sm font-extrabold text-white mt-3 mb-1">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-xs font-bold text-white mt-2.5 mb-1">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-xs font-bold text-white mt-2 mb-0.5">{children}</h3>,
+                          h4: ({ children }) => <h4 className="text-xs font-semibold text-white mt-1.5 mb-0.5">{children}</h4>,
+                          ul: ({ children }) => <ul className="list-disc list-inside pl-1 my-1.5 space-y-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside pl-1 my-1.5 space-y-1">{children}</ol>,
+                          li: ({ children }) => <li className="my-0.5">{children}</li>
                         }}
                       >
                         {viewingItemDetail.transitDetails}
