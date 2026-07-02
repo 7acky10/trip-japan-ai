@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Markdown from 'react-markdown';
 import { Trip, ItineraryItem, DayTab, TransitMode } from './types';
 import { generateDaysList, formatMinutesToTime, makeGoogleMapsDirUrl } from './utils';
 import TripSetupForm from './components/TripSetupForm';
@@ -914,9 +915,20 @@ export default function App() {
             {viewingItemDetail.notes && (
               <div className="bg-[#1e1e22] p-3 rounded-xl border border-white/5">
                 <h5 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">備忘備註</h5>
-                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {viewingItemDetail.notes}
-                </p>
+                <div className="text-xs text-gray-300 leading-relaxed">
+                  <Markdown
+                    components={{
+                      a: ({ href, children }) => (
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
+                          {children}
+                        </a>
+                      ),
+                      p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                    }}
+                  >
+                    {viewingItemDetail.notes}
+                  </Markdown>
+                </div>
               </div>
             )}
 
@@ -953,8 +965,19 @@ export default function App() {
                     </p>
                   </div>
                   {viewingItemDetail.transitDetails && (
-                    <div className="text-xs text-sky-300 font-medium whitespace-pre-wrap leading-relaxed break-words text-left pl-1">
-                      {viewingItemDetail.transitDetails}
+                    <div className="text-xs text-sky-300 font-medium leading-relaxed break-words text-left pl-1">
+                      <Markdown
+                        components={{
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline font-semibold">
+                              {children}
+                            </a>
+                          ),
+                          p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                        }}
+                      >
+                        {viewingItemDetail.transitDetails}
+                      </Markdown>
                     </div>
                   )}
                 </div>

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import Markdown from 'react-markdown';
 import { Trip, ItineraryItem, DayTab } from '../types';
 import { formatMinutesToTime } from '../utils';
 import { MapPin, Map, Check, Trash2, Calendar, Clipboard, Compass, ExternalLink, Ticket, Coins, Clock } from 'lucide-react';
@@ -191,8 +192,19 @@ export default function TripAgendaView({
                                   </div>
 
                                   {remainingDetails && (
-                                    <div className="mt-1 text-[11px] text-[#a1a1aa] leading-relaxed break-words font-normal whitespace-pre-wrap pl-1 text-left">
-                                      {remainingDetails}
+                                    <div className="mt-1 text-[11px] text-[#a1a1aa] leading-relaxed break-words font-normal pl-1 text-left">
+                                      <Markdown
+                                        components={{
+                                          a: ({ href, children }) => (
+                                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
+                                              {children}
+                                            </a>
+                                          ),
+                                          p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                                        }}
+                                      >
+                                        {remainingDetails}
+                                      </Markdown>
                                     </div>
                                   )}
                                 </>
@@ -251,7 +263,18 @@ export default function TripAgendaView({
                           {/* Notes summary (No box, no border - Indented with low saturation text) */}
                           {item.notes && (
                             <div className="mt-2.5 pl-3 border-l-2 border-white/10 text-[11px] text-gray-400 leading-relaxed font-light">
-                              {item.notes}
+                              <Markdown
+                                components={{
+                                  a: ({ href, children }) => (
+                                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
+                                      {children}
+                                    </a>
+                                  ),
+                                  p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                                }}
+                              >
+                                {item.notes}
+                              </Markdown>
                             </div>
                           )}
                         </div>
@@ -327,8 +350,19 @@ export default function TripAgendaView({
                               </div>
 
                               {remainingDetails && (
-                                <div className="mt-1 text-[11px] text-[#a1a1aa] leading-relaxed break-words font-normal whitespace-pre-wrap pl-1 text-left w-full">
-                                  {remainingDetails}
+                                <div className="mt-1 text-[11px] text-[#a1a1aa] leading-relaxed break-words font-normal pl-1 text-left w-full">
+                                  <Markdown
+                                    components={{
+                                      a: ({ href, children }) => (
+                                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline font-semibold">
+                                          {children}
+                                        </a>
+                                      ),
+                                      p: ({ children }) => <span className="block whitespace-pre-wrap">{children}</span>
+                                    }}
+                                  >
+                                    {remainingDetails}
+                                  </Markdown>
                                 </div>
                               )}
                             </>
