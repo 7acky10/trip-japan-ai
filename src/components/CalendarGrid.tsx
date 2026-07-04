@@ -59,6 +59,38 @@ export default function CalendarGrid({
     };
   }, []);
 
+  const [now, setNow] = useState(new Date());
+
+  // Update current time state every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Auto scroll to current time if activeDate is today on load
+  useEffect(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const date = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${date}`;
+
+    if (activeDate === todayStr && gridContainerRef.current) {
+      const currentMinutes = today.getHours() * 60 + today.getMinutes();
+      const containerHeight = gridContainerRef.current.clientHeight || 400;
+      const targetScrollTop = Math.max(0, currentMinutes - containerHeight / 3);
+      
+      const timer = setTimeout(() => {
+        if (gridContainerRef.current) {
+          gridContainerRef.current.scrollTop = targetScrollTop;
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeDate]);
+
   // Sort items by start minutes to display correctly and perform gaps travel logic
   const sortedItems = [...items].sort((a, b) => a.startMinutes - b.startMinutes);
 
@@ -220,6 +252,16 @@ export default function CalendarGrid({
     setInitialItemValue(null);
     setCurrentDeltaMinutes(0);
   };
+
+  const isToday = (() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const date = String(today.getDate()).padStart(2, '0');
+    return activeDate === `${year}-${month}-${date}`;
+  })();
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   return (
     <div className="relative border border-white/5 rounded-2xl bg-[#121214] shadow-xs overflow-hidden flex flex-col h-[75vh]">
@@ -564,6 +606,19 @@ export default function CalendarGrid({
                 </div>
               );
             })}
+
+            {isToday && (
+              <div 
+                className="absolute left-0 right-0 z-25 pointer-events-none flex items-center"
+                style={{ top: `${currentMinutes}px` }}
+              >
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 -ml-1.5 shadow-sm shrink-0 border border-black/50" />
+                <div className="flex-1 h-0.5 border-t-2 border-dashed border-yellow-400/80 opacity-90 shadow-2xs" />
+                <span className="text-[10px] font-mono font-bold bg-yellow-400 text-black px-1.5 py-0.5 rounded-sm ml-2 mr-2 select-none shadow-md shrink-0">
+                  現在 {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
+                </span>
+              </div>
+            )}
 
           </div>
 

@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Markdown from 'react-markdown';
 import { Trip, ItineraryItem, DayTab } from '../types';
 import { formatMinutesToTime } from '../utils';
-import { MapPin, Map, Check, Trash2, Calendar, Clipboard, Compass, ExternalLink, Ticket, Coins, Clock } from 'lucide-react';
+import { MapPin, Map, Check, Trash2, Calendar, Clipboard, Compass, ExternalLink, Ticket, Coins, Clock, ChevronUp } from 'lucide-react';
 
 interface TripAgendaViewProps {
   trip: Trip;
@@ -24,18 +24,84 @@ export default function TripAgendaView({
   activeDate
 }: TripAgendaViewProps) {
 
-  // Auto scroll to activeDate day section when activeDate changes or on view mount
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  // Update current time every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Monitor window scroll to toggle Back to Top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Auto scroll to activeDate day section or the active event of today when activeDate changes
   useEffect(() => {
     if (activeDate) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const date = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${date}`;
+
       const timer = setTimeout(() => {
+        if (activeDate === todayStr) {
+          const currentMinutes = today.getHours() * 60 + today.getMinutes();
+          const todayItems = items.filter(i => i.date === todayStr);
+
+          if (todayItems.length > 0) {
+            // Find current active item
+            let targetItem = todayItems.find(i => currentMinutes >= i.startMinutes && currentMinutes <= i.endMinutes);
+
+            // If none is active, find the next upcoming item
+            if (!targetItem) {
+              const upcomingItems = todayItems.filter(i => i.startMinutes > currentMinutes);
+              if (upcomingItems.length > 0) {
+                targetItem = upcomingItems.sort((a, b) => a.startMinutes - b.startMinutes)[0];
+              }
+            }
+
+            // If still none, find the last item of today
+            if (!targetItem) {
+              targetItem = todayItems.sort((a, b) => b.startMinutes - a.startMinutes)[0];
+            }
+
+            if (targetItem) {
+              const element = document.getElementById(`agenda-item-${targetItem.id}`);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+              }
+            }
+          }
+        }
+
+        // Fallback to day section header
         const element = document.getElementById(`agenda-day-${activeDate}`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 100);
+      }, 200);
       return () => clearTimeout(timer);
     }
-  }, [activeDate]);
+  }, [activeDate, items]);
   
   // Calculate total expense
   const totalYen = items.filter(item => (item.transitCurrency || '¥') === '¥' && item.transitCost !== undefined && item.transitCost !== null && item.transitCost >= 0).reduce((sum, item) => sum + (item.transitCost || 0), 0);
@@ -61,6 +127,30 @@ export default function TripAgendaView({
       default: return 'bg-[#A7C7E7]/15 text-[#A7C7E7] border-[#A7C7E7]/20';
     }
   };
+
+  const renderCurrentTimeLine = () => {
+    return (
+      <div className="relative flex items-center select-none pointer-events-none !mt-2.5 !mb-1.5 h-6">
+        {/* Circle on the timeline rail */}
+        <div className="absolute left-[-17px] -translate-x-1/2 w-3 h-3 rounded-full bg-yellow-400 border-2 border-[#0a0a0c] z-30 animate-pulse" />
+        
+        {/* Glowing yellow line */}
+        <div className="flex-1 h-0.5 bg-gradient-to-r from-yellow-400/80 to-transparent shadow-xs" />
+        <span className="text-[10px] font-bold text-yellow-400 bg-yellow-950/45 px-2 py-0.5 rounded border border-yellow-500/20 ml-2">
+          現在時間 {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
+        </span>
+      </div>
+    );
+  };
+
+  const todayStr = (() => {
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const date = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${date}`;
+  })();
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto px-4 pb-12 animate-fade-in text-[#e0e0e0]">
@@ -125,8 +215,16 @@ export default function TripAgendaView({
                     const transitStartsYesterday = item.transitMode !== 'none' && duration > 0 && item.startMinutes - duration < 0;
                     const shouldSuppressTransit = transitStartsYesterday && dIdx > 0;
 
+                    const isTodayDay = day.dateString === todayStr;
+                    const showLineBefore = isTodayDay && idx === 0 && currentMinutes < item.startMinutes;
+                    const showLineAfter = isTodayDay && currentMinutes >= item.startMinutes && (!nextItem || currentMinutes < nextItem.startMinutes);
+
+                    const hasLineBefore = showLineBefore || (idx > 0 && isTodayDay && currentMinutes >= dayItems[idx - 1].startMinutes && currentMinutes < item.startMinutes);
+
                     return (
-                      <div key={item.id} className="space-y-4 relative">
+                      <React.Fragment key={item.id}>
+                        {showLineBefore && renderCurrentTimeLine()}
+                        <div id={`agenda-item-${item.id}`} className={`space-y-4 relative ${hasLineBefore ? '!mt-1.5' : ''}`}>
                         {/* Timeline node dot for the event */}
                         <div className={`absolute left-[-17px] top-6 -translate-x-1/2 w-2.5 h-2.5 rounded-full border-2 border-[#0a0a0c] z-20 ${
                           isContinuedFromYesterday 
@@ -293,6 +391,8 @@ export default function TripAgendaView({
                           )}
                         </div>
                       </div>
+                      {showLineAfter && renderCurrentTimeLine()}
+                    </React.Fragment>
                     );
                   })}
 
@@ -398,6 +498,16 @@ export default function TripAgendaView({
           );
         })}
       </div>
+
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-40 bg-[#1e1e22]/95 text-[#A7C7E7] hover:text-white border border-white/10 px-4 py-2.5 rounded-full text-xs font-bold shadow-2xl hover:bg-zinc-800 transition active:scale-95 flex items-center space-x-1 select-none cursor-pointer animate-fade-in"
+        >
+          <ChevronUp className="w-4 h-4 text-[#A7C7E7]" />
+          <span>跳回最上面</span>
+        </button>
+      )}
     </div>
   );
 }
