@@ -263,6 +263,105 @@ export default function CalendarGrid({
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
+  // 1. Calculate dynamic positions for all items
+  const renderedItems = items.map((item) => {
+    const isEventDragging = activeItemId === item.id;
+    const isContinuedFromYesterday = activeDate && item.date !== activeDate;
+    const isCrossOvernightItem = item.endMinutes > 1440;
+    
+    let displayStart = isContinuedFromYesterday ? 0 : item.startMinutes;
+    let displayEnd = isContinuedFromYesterday 
+      ? Math.min(1440, item.endMinutes - 1440) 
+      : Math.min(1440, item.endMinutes);
+
+    if (isEventDragging && activeAction) {
+      if (activeAction === 'drag') {
+        const duration = item.endMinutes - item.startMinutes;
+        displayStart = Math.max(0, Math.min(1440 - duration, item.startMinutes + currentDeltaMinutes));
+        displayEnd = displayStart + duration;
+      } else if (activeAction === 'resize-top') {
+        displayStart = Math.max(0, Math.min(item.endMinutes - 15, item.startMinutes + currentDeltaMinutes));
+      } else if (activeAction === 'resize-bottom') {
+        displayEnd = Math.min(1440, Math.max(item.startMinutes + 15, item.endMinutes + currentDeltaMinutes));
+      }
+    }
+
+    const cardTop = displayStart;
+    const cardHeight = Math.max(25, displayEnd - displayStart);
+
+    return {
+      item,
+      id: item.id,
+      start: displayStart,
+      end: displayEnd,
+      cardTop,
+      cardHeight,
+      isContinuedFromYesterday,
+      isCrossOvernightItem,
+      isEventDragging
+    };
+  });
+
+  const layoutMap: Record<string, { colIndex: number; colCount: number }> = {};
+
+  if (renderedItems.length > 0) {
+    const sortedRendered = [...renderedItems].sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      return b.end - a.end;
+    });
+
+    const clusters: Array<typeof sortedRendered> = [];
+    let currentCluster: typeof sortedRendered = [];
+    let maxEnd = 0;
+
+    for (const ri of sortedRendered) {
+      if (currentCluster.length > 0 && ri.start >= maxEnd) {
+        clusters.push(currentCluster);
+        currentCluster = [ri];
+        maxEnd = ri.end;
+      } else {
+        currentCluster.push(ri);
+        maxEnd = Math.max(maxEnd, ri.end);
+      }
+    }
+    if (currentCluster.length > 0) {
+      clusters.push(currentCluster);
+    }
+
+    for (const cluster of clusters) {
+      const columns: Array<string[]> = []; // stores item IDs in each column
+      const itemColIndices: Record<string, number> = {};
+
+      for (const ri of cluster) {
+        let colIndex = -1;
+        for (let c = 0; c < columns.length; c++) {
+          const colItemIds = columns[c];
+          const lastItemId = colItemIds[colItemIds.length - 1];
+          const lastItemRendered = renderedItems.find(item => item.id === lastItemId);
+          
+          if (lastItemRendered && ri.start >= lastItemRendered.end) {
+            colItemIds.push(ri.id);
+            colIndex = c;
+            break;
+          }
+        }
+        if (colIndex === -1) {
+          colIndex = columns.length;
+          columns.push([ri.id]);
+        }
+        itemColIndices[ri.id] = colIndex;
+      }
+
+      const colCount = columns.length;
+      for (const ri of cluster) {
+        layoutMap[ri.id] = {
+          colIndex: itemColIndices[ri.id],
+          colCount: colCount
+        };
+      }
+    }
+  }
+
   return (
     <div className="relative border border-white/5 rounded-2xl bg-[#121214] shadow-xs overflow-hidden flex flex-col h-[75vh]">
       
@@ -460,34 +559,16 @@ export default function CalendarGrid({
             })}
 
             {/* Render Calendar Events (Itinerary Cards) */}
-            {items.map((item) => {
-              // Calculate live display coordinates
-              const isEventDragging = activeItemId === item.id;
-              const isContinuedFromYesterday = activeDate && item.date !== activeDate;
-              const isCrossOvernightItem = item.endMinutes > 1440;
-              
-              let displayStart = isContinuedFromYesterday ? 0 : item.startMinutes;
-              let displayEnd = isContinuedFromYesterday 
-                ? Math.min(1440, item.endMinutes - 1440) 
-                : Math.min(1440, item.endMinutes);
-
-              if (isEventDragging && activeAction) {
-                if (activeAction === 'drag') {
-                  const duration = item.endMinutes - item.startMinutes;
-                  displayStart = Math.max(0, Math.min(1440 - duration, item.startMinutes + currentDeltaMinutes));
-                  displayEnd = displayStart + duration;
-                } else if (activeAction === 'resize-top') {
-                  displayStart = Math.max(0, Math.min(item.endMinutes - 15, item.startMinutes + currentDeltaMinutes));
-                } else if (activeAction === 'resize-bottom') {
-                  displayEnd = Math.min(1440, Math.max(item.startMinutes + 15, item.endMinutes + currentDeltaMinutes));
-                }
-              }
-
-              const cardTop = displayStart;
-              const cardHeight = Math.max(25, displayEnd - displayStart);
-
+            {renderedItems.map(({ item, cardTop, cardHeight, isContinuedFromYesterday, isCrossOvernightItem, isEventDragging }) => {
               // Responsive classes
               const showCompact = cardHeight < 50;
+
+              const { colIndex = 0, colCount = 1 } = layoutMap[item.id] || {};
+              const outerMargin = isMobile ? 8 : 16;
+              const gap = 6;
+
+              const cardLeft = `calc(${outerMargin}px + ${colIndex} * ((100% - ${outerMargin * 2}px - ${(colCount - 1) * gap}px) / ${colCount} + ${gap}px))`;
+              const cardWidth = `calc((100% - ${outerMargin * 2}px - ${(colCount - 1) * gap}px) / ${colCount})`;
 
               return (
                 <div
@@ -495,9 +576,11 @@ export default function CalendarGrid({
                   id={`item-${item.id}`}
                   style={{
                     top: `${cardTop}px`,
-                    height: `${cardHeight}px`
+                    height: `${cardHeight}px`,
+                    left: cardLeft,
+                    width: cardWidth
                   }}
-                  className={`absolute left-2 right-2 sm:left-4 sm:right-4 z-20 rounded-xl border flex flex-col p-2 select-none pointer-events-auto transition-all group ${
+                  className={`absolute z-20 rounded-xl border flex flex-col p-2 select-none pointer-events-auto transition-all group ${
                     isEventDragging 
                       ? 'shadow-xl ring-2 ring-[#A7C7E7] scale-[1.01] bg-[#1e1e22] text-white opacity-95 z-30 cursor-grabbing border-white/10'
                       : `shadow-3xs ${themeColors.bg} ${themeColors.hoverBg} cursor-pointer`
