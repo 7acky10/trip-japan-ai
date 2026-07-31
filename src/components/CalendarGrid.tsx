@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ItineraryItem, TransitMode } from '../types';
 import { formatMinutesToTime } from '../utils';
-import { MapPin, Clock, Train, Bus, Car, Footprints, Navigation, CheckCircle2, AlertTriangle, Edit, Heart, HelpCircle, ExternalLink, Plane } from 'lucide-react';
+import { MapPin, Clock, Train, Bus, Car, Footprints, Navigation, CheckCircle2, AlertTriangle, Heart, HelpCircle, ExternalLink, Plane, Inbox } from 'lucide-react';
 
 interface CalendarGridProps {
   items: ItineraryItem[]; // already filtered for the current date
@@ -12,6 +12,8 @@ interface CalendarGridProps {
   onItemTimeUpdate: (id: string, startMins: number, endMins: number) => void;
   onAddAtTime: (startMins: number) => void;
   colorPreset: string;
+  onMoveToUnscheduled?: (itemId: string) => void;
+  onDropUnscheduledItem?: (itemId: string, startMins: number) => void;
 }
 
 const HOUR_HEIGHT = 60; // 60px per hour means 1px = 1 minute!
@@ -25,7 +27,9 @@ export default function CalendarGrid({
   onTransitClick,
   onItemTimeUpdate,
   onAddAtTime,
-  colorPreset
+  colorPreset,
+  onMoveToUnscheduled,
+  onDropUnscheduledItem
 }: CalendarGridProps) {
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const ignoreNextClickRef = useRef<boolean>(false);
@@ -38,8 +42,93 @@ export default function CalendarGrid({
   const [currentDeltaMinutes, setCurrentDeltaMinutes] = useState<number>(0);
   const [longPressAlert, setLongPressAlert] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [dragHoverInfo, setDragHoverInfo] = useState<{ startMins: number; duration: number; title: string } | null>(null);
 
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Refs for tracking global window pointer events reliably
+  const activeItemIdRef = useRef<string | null>(null);
+  activeItemIdRef.current = activeItemId;
+
+  const activeActionRef = useRef<'drag' | 'resize-top' | 'resize-bottom' | null>(null);
+  activeActionRef.current = activeAction;
+
+  const initialItemValueRef = useRef<{ startMins: number; endMins: number; title: string } | null>(null);
+  initialItemValueRef.current = initialItemValue;
+
+  const pointerStartYRef = useRef<number>(0);
+  pointerStartYRef.current = pointerStartY;
+
+  const currentDeltaRef = useRef<number>(0);
+
+  // Global window listeners so pointer release anywhere on screen properly updates item time and clears drag state
+  useEffect(() => {
+    const handleGlobalPointerMove = (e: PointerEvent) => {
+      if (holdTimerRef.current && !activeActionRef.current) {
+        const distY = Math.abs(e.pageY - pointerStartYRef.current);
+        if (distY > 8) {
+          clearTimeout(holdTimerRef.current);
+          holdTimerRef.current = null;
+        }
+      }
+
+      if (!activeItemIdRef.current || !activeActionRef.current || !initialItemValueRef.current) return;
+
+      const deltaY = e.pageY - pointerStartYRef.current;
+      let deltaMins = Math.round(deltaY);
+      deltaMins = Math.round(deltaMins / 15) * 15;
+
+      if (deltaMins !== 0) {
+        ignoreNextClickRef.current = true;
+      }
+
+      currentDeltaRef.current = deltaMins;
+      setCurrentDeltaMinutes(deltaMins);
+    };
+
+    const handleGlobalPointerEnd = () => {
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+
+      if (activeItemIdRef.current && activeActionRef.current && initialItemValueRef.current) {
+        let finalStart = initialItemValueRef.current.startMins;
+        let finalEnd = initialItemValueRef.current.endMins;
+
+        if (activeActionRef.current === 'drag') {
+          const duration = initialItemValueRef.current.endMins - initialItemValueRef.current.startMins;
+          finalStart = Math.max(0, Math.min(1440 - duration, initialItemValueRef.current.startMins + currentDeltaRef.current));
+          finalEnd = finalStart + duration;
+        } else if (activeActionRef.current === 'resize-top') {
+          finalStart = Math.max(0, Math.min(initialItemValueRef.current.endMins - 15, initialItemValueRef.current.startMins + currentDeltaRef.current));
+        } else if (activeActionRef.current === 'resize-bottom') {
+          finalEnd = Math.min(1440, Math.max(initialItemValueRef.current.startMins + 15, initialItemValueRef.current.endMins + currentDeltaRef.current));
+        }
+
+        onItemTimeUpdate(activeItemIdRef.current, finalStart, finalEnd);
+        ignoreNextClickRef.current = true;
+      }
+
+      setActiveItemId(null);
+      setActiveAction(null);
+      setInitialItemValue(null);
+      setCurrentDeltaMinutes(0);
+      currentDeltaRef.current = 0;
+    };
+
+    window.addEventListener('pointermove', handleGlobalPointerMove);
+    window.addEventListener('pointerup', handleGlobalPointerEnd);
+    window.addEventListener('pointercancel', handleGlobalPointerEnd);
+    window.addEventListener('dragend', handleGlobalPointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handleGlobalPointerMove);
+      window.removeEventListener('pointerup', handleGlobalPointerEnd);
+      window.removeEventListener('pointercancel', handleGlobalPointerEnd);
+      window.removeEventListener('dragend', handleGlobalPointerEnd);
+    };
+  }, [onItemTimeUpdate]);
 
   // Detect mobile/tablet screen & touch input to prevent drag scroll collision
   useEffect(() => {
@@ -149,9 +238,6 @@ export default function CalendarGrid({
     const isCrossOvernightItem = item.endMinutes > 1440;
     if (isContinuedFromYesterday || isCrossOvernightItem) return;
 
-    // Use setPointerCapture to track smooth dragging across borders
-    e.currentTarget.setPointerCapture(e.pointerId);
-
     if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
 
     const startY = e.pageY;
@@ -162,17 +248,28 @@ export default function CalendarGrid({
       title: item.title
     });
     setCurrentDeltaMinutes(0);
-    ignoreNextClickRef.current = false;
 
     if (actionType === 'resize-top' || actionType === 'resize-bottom') {
-      // Immediate action - no long-press needed
+      e.preventDefault();
+      // Immediate action - set pointer capture for smooth vertical edge resizing
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (err) {}
       setActiveItemId(item.id);
       setActiveAction(actionType);
       ignoreNextClickRef.current = true;
     } else {
-      // Prompt "long-press detect" to separate vertical page scroll from event drag
+      // For standard 'drag', don't lock pointer capture immediately so HTML5 native drag to UnscheduledPanel can fire
+      const targetElem = e.currentTarget;
+      const pointerId = e.pointerId;
+
+      ignoreNextClickRef.current = false;
+
+      // Long-press timer for in-calendar vertical repositioning
       holdTimerRef.current = setTimeout(() => {
-        // Long press triggers!
+        try {
+          targetElem.setPointerCapture(pointerId);
+        } catch (err) {}
         setActiveItemId(item.id);
         setActiveAction(actionType);
         ignoreNextClickRef.current = true;
@@ -416,7 +513,77 @@ export default function CalendarGrid({
             id="calendar-grid-area"
             className="flex-1 relative cursor-crosshair"
             onClick={handleGridClick}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+
+              const dragging = (window as any).__draggingItem;
+              if (dragging) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const offsetY = dragging.offsetY || 0;
+                const duration = dragging.duration || 60;
+                const relativeY = (e.clientY - rect.top) - offsetY;
+                const hoverMins = Math.max(0, Math.min(1440 - duration, Math.round(relativeY / 15) * 15));
+
+                setDragHoverInfo({
+                  startMins: hoverMins,
+                  duration,
+                  title: dragging.title || '行程'
+                });
+              }
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setDragHoverInfo(null);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragHoverInfo(null);
+              delete (window as any).__draggingItem;
+
+              if (holdTimerRef.current) {
+                clearTimeout(holdTimerRef.current);
+                holdTimerRef.current = null;
+              }
+              setActiveItemId(null);
+              setActiveAction(null);
+              setInitialItemValue(null);
+              setCurrentDeltaMinutes(0);
+              currentDeltaRef.current = 0;
+
+              const itemId = e.dataTransfer.getData('text/plain');
+              const offsetYStr = e.dataTransfer.getData('text/drag-offset-y');
+              const offsetY = offsetYStr ? parseFloat(offsetYStr) : 0;
+
+              if (itemId && onDropUnscheduledItem) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const relativeY = (e.clientY - rect.top) - offsetY;
+                const clickedMins = Math.max(0, Math.min(1380, Math.round(relativeY / 15) * 15));
+                onDropUnscheduledItem(itemId, clickedMins);
+              }
+            }}
           >
+            {/* Live Drag-and-Drop Placement Hover Preview */}
+            {dragHoverInfo && (
+              <div
+                style={{
+                  top: `${dragHoverInfo.startMins}px`,
+                  height: `${Math.max(25, dragHoverInfo.duration)}px`,
+                  left: isMobile ? '8px' : '16px',
+                  right: isMobile ? '8px' : '16px',
+                }}
+                className="absolute z-40 border-2 border-dashed border-[#A7C7E7] bg-[#A7C7E7]/25 rounded-xl p-2 pointer-events-none transition-all flex items-center justify-between shadow-xl backdrop-blur-xs"
+              >
+                <div className="flex items-center gap-1.5 text-white font-bold text-xs truncate">
+                  <span className="w-2 h-2 rounded-full bg-[#A7C7E7] animate-ping shrink-0" />
+                  <span className="truncate">{dragHoverInfo.title}</span>
+                </div>
+                <span className="text-xs font-mono font-bold bg-black/80 text-[#A7C7E7] px-2 py-0.5 rounded shrink-0 border border-[#A7C7E7]/40 shadow-sm">
+                  {formatMinutesToTime(dragHoverInfo.startMins)} - {formatMinutesToTime(dragHoverInfo.startMins + dragHoverInfo.duration, true)}
+                </span>
+              </div>
+            )}
             {/* Grid line stripes */}
             {HOUR_LABELS.map((hour) => (
               <div 
@@ -559,7 +726,7 @@ export default function CalendarGrid({
             })}
 
             {/* Render Calendar Events (Itinerary Cards) */}
-            {renderedItems.map(({ item, cardTop, cardHeight, isContinuedFromYesterday, isCrossOvernightItem, isEventDragging }) => {
+            {renderedItems.map(({ item, start, end, cardTop, cardHeight, isContinuedFromYesterday, isCrossOvernightItem, isEventDragging }) => {
               // Responsive classes
               const showCompact = cardHeight < 50;
 
@@ -574,6 +741,40 @@ export default function CalendarGrid({
                 <div
                   key={item.id}
                   id={`item-${item.id}`}
+                  draggable={!isMobile && !isContinuedFromYesterday && !isCrossOvernightItem}
+                  onDragStart={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const offsetY = e.clientY - rect.top;
+                    if (holdTimerRef.current) {
+                      clearTimeout(holdTimerRef.current);
+                      holdTimerRef.current = null;
+                    }
+                    setActiveItemId(null);
+                    setActiveAction(null);
+                    setInitialItemValue(null);
+                    setCurrentDeltaMinutes(0);
+                    currentDeltaRef.current = 0;
+                    ignoreNextClickRef.current = true;
+                    e.dataTransfer.setData('text/plain', item.id);
+                    e.dataTransfer.setData('application/json', JSON.stringify(item));
+                    e.dataTransfer.setData('text/drag-offset-y', String(offsetY));
+                    e.dataTransfer.effectAllowed = 'move';
+                    (window as any).__draggingItem = {
+                      id: item.id,
+                      duration: item.endMinutes - item.startMinutes || 60,
+                      offsetY,
+                      title: item.title
+                    };
+                  }}
+                  onDragEnd={() => {
+                    delete (window as any).__draggingItem;
+                    setDragHoverInfo(null);
+                    setActiveItemId(null);
+                    setActiveAction(null);
+                    setInitialItemValue(null);
+                    setCurrentDeltaMinutes(0);
+                    currentDeltaRef.current = 0;
+                  }}
                   style={{
                     top: `${cardTop}px`,
                     height: `${cardHeight}px`,
@@ -596,16 +797,25 @@ export default function CalendarGrid({
                   }}
                 >
                   
-                  {/* Long-press Top Edge Resize Handle */}
+                  {/* Top Edge Resize Handle */}
                   {(!isMobile && !isContinuedFromYesterday && !isCrossOvernightItem) && (
                     <div
-                      className="absolute -top-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
-                      onPointerDown={(e) => handlePointerDown(e, item, 'resize-top')}
+                      draggable
+                      onDragStart={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handlePointerDown(e, item, 'resize-top');
+                      }}
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
-                      title="滑動調整開始時間"
+                      className="absolute -top-1.5 left-0 right-0 h-4 cursor-row-resize z-40 bg-transparent flex items-center justify-center group"
+                      title="上下拉動調整開始時間"
                     >
-                      <div className="w-12 h-1 bg-[#A7C7E7]/0 group-hover:bg-[#A7C7E7] rounded-full transition-all" />
+                      <div className="w-16 h-1.5 bg-[#A7C7E7]/40 group-hover:bg-[#A7C7E7] rounded-full transition-all shadow-xs" />
                     </div>
                   )}
 
@@ -624,7 +834,7 @@ export default function CalendarGrid({
                           {item.title}
                         </span>
                         <span className="font-mono text-[10px] shrink-0 text-gray-400">
-                          {formatMinutesToTime(item.startMinutes)}~{formatMinutesToTime(item.endMinutes, true)}
+                          {formatMinutesToTime(start)}~{formatMinutesToTime(end, true)}
                         </span>
                       </div>
                     ) : (
@@ -636,9 +846,24 @@ export default function CalendarGrid({
                               {isContinuedFromYesterday && <span className="bg-indigo-550/30 text-indigo-300 text-[10px] px-1.5 py-0.5 rounded-md shrink-0 border border-indigo-500/10">跨夜延續</span>}
                               {item.title}
                             </h4>
-                            <span className="text-[10px] font-mono text-gray-300 bg-black/25 px-1 py-0.5 rounded shrink-0">
-                              {formatMinutesToTime(item.startMinutes)} - {formatMinutesToTime(item.endMinutes, true)}
-                            </span>
+                            <div className="flex items-center space-x-1 shrink-0">
+                              <span className="text-[10px] font-mono text-gray-300 bg-black/25 px-1 py-0.5 rounded">
+                                {formatMinutesToTime(start)} - {formatMinutesToTime(end, true)}
+                              </span>
+                              {onMoveToUnscheduled && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onMoveToUnscheduled(item.id);
+                                  }}
+                                  className="p-1 hover:bg-white/20 rounded text-gray-300 hover:text-white transition cursor-pointer"
+                                  title="移至暫存行程區"
+                                >
+                                  <Inbox className="w-3 h-3 text-[#A7C7E7]" />
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Location details */}
@@ -664,25 +889,30 @@ export default function CalendarGrid({
                               {item.notes}
                             </span>
                           )}
-                          
-                          <span className="ml-auto inline-flex p-1 rounded-md bg-white/5 opacity-40 group-hover:opacity-100 group-hover:bg-[#A7C7E7]/20 text-[#A7C7E7] transition-all duration-150">
-                            <Edit className="w-3 h-3" />
-                          </span>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Long-press Bottom Edge Resize Handle */}
+                  {/* Bottom Edge Resize Handle */}
                   {(!isMobile && !isContinuedFromYesterday && !isCrossOvernightItem) && (
                     <div
-                      className="absolute -bottom-1.5 left-0 right-0 h-3 cursor-row-resize z-30 bg-transparent flex items-center justify-center group"
-                      onPointerDown={(e) => handlePointerDown(e, item, 'resize-bottom')}
+                      draggable
+                      onDragStart={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handlePointerDown(e, item, 'resize-bottom');
+                      }}
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
-                      title="滑動調整結束時間"
+                      className="absolute -bottom-1.5 left-0 right-0 h-4 cursor-row-resize z-40 bg-transparent flex items-center justify-center group"
+                      title="上下拉動調整結束時間"
                     >
-                      <div className="w-12 h-1 bg-[#A7C7E7]/0 group-hover:bg-[#A7C7E7] rounded-full transition-all" />
+                      <div className="w-16 h-1.5 bg-[#A7C7E7]/40 group-hover:bg-[#A7C7E7] rounded-full transition-all shadow-xs" />
                     </div>
                   )}
 

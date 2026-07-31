@@ -8,6 +8,7 @@ import ItineraryItemEditor from './components/ItineraryItemEditor';
 import TripAgendaView from './components/TripAgendaView';
 import CloudSyncManager from './components/CloudSyncManager';
 import TripDuplicateModal from './components/TripDuplicateModal';
+import UnscheduledPanel from './components/UnscheduledPanel';
 
 // Standard icons from lucide-react
 import { 
@@ -194,6 +195,25 @@ const DEMO_ITEMS: ItineraryItem[] = [
     transitDuration: 18,
     transitDetails: '搭乘都營地下鐵大江戶線',
     notes: '可近距離完整俯瞰點晶剔透的東京鐵塔地標夜景！'
+  },
+  {
+    id: 'demo_item_unscheduled_1',
+    tripId: 'demo_tokyo_trip',
+    date: 'unscheduled',
+    isUnscheduled: true,
+    title: '上野阿美橫丁採買與小吃 (備案)',
+    location: '上野阿美橫丁',
+    startMinutes: 900, // 15:00
+    endMinutes: 960,   // 16:00
+    isReserved: false,
+    reservationTime: '',
+    googleMapsRoute: '',
+    googleMapsUrl: '',
+    transitMode: 'none',
+    transitCost: 0,
+    transitDuration: 0,
+    transitDetails: '',
+    notes: '彈性行程：採買藥妝與章魚燒小吃。可隨時拖曳至日曆時間表安排！'
   }
 ];
 
@@ -522,6 +542,76 @@ export default function App() {
     setEditingItem(defaultNew);
   };
 
+  // Add new unscheduled (stashed) itinerary item
+  const handleAddUnscheduledItem = (title: string, location: string, startMins: number, durationMins: number) => {
+    if (!currentTrip) return;
+    const newItem: ItineraryItem = {
+      id: `item_${Date.now()}`,
+      tripId: currentTrip.id,
+      date: 'unscheduled',
+      isUnscheduled: true,
+      title,
+      location,
+      startMinutes: startMins,
+      endMinutes: Math.min(1440, startMins + durationMins),
+      isReserved: false,
+      reservationTime: '',
+      googleMapsRoute: '',
+      googleMapsUrl: '',
+      transitMode: 'none',
+      transitCost: 0,
+      transitDuration: 0,
+      transitDetails: '',
+      notes: ''
+    };
+
+    const updated = [...itineraryItems, newItem];
+    const finalUpdated = recalculateGoogleMapsUrls(updated);
+    setItineraryItems(finalUpdated);
+    saveToLocalStorage(trips, finalUpdated);
+  };
+
+  // Move unscheduled item to calendar active date / time
+  const handleMoveUnscheduledToCalendar = (itemId: string, targetDate: string, targetStartMins?: number) => {
+    const updated = itineraryItems.map(item => {
+      if (item.id === itemId) {
+        const duration = item.endMinutes - item.startMinutes || 60;
+        const startMinutes = targetStartMins !== undefined ? targetStartMins : item.startMinutes;
+        const endMinutes = Math.min(1440, startMinutes + duration);
+        return {
+          ...item,
+          date: targetDate,
+          isUnscheduled: false,
+          startMinutes,
+          endMinutes
+        };
+      }
+      return item;
+    });
+
+    const finalUpdated = recalculateGoogleMapsUrls(updated);
+    setItineraryItems(finalUpdated);
+    saveToLocalStorage(trips, finalUpdated);
+  };
+
+  // Move scheduled item back to unscheduled stashed list
+  const handleMoveItemToUnscheduled = (itemId: string) => {
+    const updated = itineraryItems.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          date: 'unscheduled',
+          isUnscheduled: true
+        };
+      }
+      return item;
+    });
+
+    const finalUpdated = recalculateGoogleMapsUrls(updated);
+    setItineraryItems(finalUpdated);
+    saveToLocalStorage(trips, finalUpdated);
+  };
+
   // Get active days tabs for active travel period
   const dayTabs: DayTab[] = currentTrip 
     ? generateDaysList(currentTrip.startDate, currentTrip.endDate)
@@ -530,6 +620,7 @@ export default function App() {
   // Filter items for current active date, including previous day's items that cross overnight (endMinutes > 1440)
   const activeDayItems = itineraryItems.filter(item => {
     if (!currentTrip || item.tripId !== currentTrip.id) return false;
+    if (item.isUnscheduled || item.date === 'unscheduled') return false;
     
     // Direct match
     if (item.date === activeDate) return true;
@@ -543,6 +634,10 @@ export default function App() {
       }
     }
     return false;
+  });
+
+  const unscheduledItems = itineraryItems.filter(item => {
+    return currentTrip && item.tripId === currentTrip.id && (item.isUnscheduled || item.date === 'unscheduled' || !item.date);
   });
 
   const activeIdx = dayTabs.findIndex(t => t.dateString === activeDate);
@@ -753,16 +848,37 @@ export default function App() {
             {/* Core View Display */}
             <div className="flex-1">
               {viewMode === 'calendar' ? (
-                <CalendarGrid
-                  items={activeDayItems}
-                  activeDate={activeDate}
-                  nextDayTransitItems={nextDayTransitItems}
-                  onItemClick={(item) => setViewingItemDetail(item)}
-                  onTransitClick={(item) => setViewingItemDetail(item)}
-                  onItemTimeUpdate={handleItemTimeUpdate}
-                  onAddAtTime={handleAddNewItemAtTime}
-                  colorPreset={currentTrip.colorPreset}
-                />
+                <div className="flex flex-col lg:flex-row gap-4 items-start">
+                  <div className="flex-1 w-full min-w-0">
+                    <CalendarGrid
+                      items={activeDayItems}
+                      activeDate={activeDate}
+                      nextDayTransitItems={nextDayTransitItems}
+                      onItemClick={(item) => setViewingItemDetail(item)}
+                      onTransitClick={(item) => setViewingItemDetail(item)}
+                      onItemTimeUpdate={handleItemTimeUpdate}
+                      onAddAtTime={handleAddNewItemAtTime}
+                      colorPreset={currentTrip.colorPreset}
+                      onMoveToUnscheduled={handleMoveItemToUnscheduled}
+                      onDropUnscheduledItem={(itemId, startMins) => handleMoveUnscheduledToCalendar(itemId, activeDate, startMins)}
+                    />
+                  </div>
+
+                  {/* Desktop Right Side / Mobile Bottom Panel for Temporary (Unscheduled) Itinerary */}
+                  <div className="w-full lg:w-80 shrink-0">
+                    <UnscheduledPanel
+                      items={unscheduledItems}
+                      activeDate={activeDate}
+                      activeDateLabel={dayTabs.find(t => t.dateString === activeDate)?.formattedDate}
+                      onAddUnscheduled={handleAddUnscheduledItem}
+                      onMoveToCalendar={handleMoveUnscheduledToCalendar}
+                      onMoveToUnscheduled={handleMoveItemToUnscheduled}
+                      onEditItem={(item) => setEditingItem(item)}
+                      onDeleteItem={handleDeleteItineraryItem}
+                      colorPreset={currentTrip.colorPreset}
+                    />
+                  </div>
+                </div>
               ) : (
                 <TripAgendaView
                   trip={currentTrip}

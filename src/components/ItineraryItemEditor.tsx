@@ -182,6 +182,7 @@ export default function ItineraryItemEditor({
     onSave({
       ...item,
       date,
+      isUnscheduled: date === 'unscheduled',
       title: title.trim() || '未命名行程',
       location: location.trim(),
       startMinutes: startMins,
@@ -257,6 +258,9 @@ export default function ItineraryItemEditor({
                     {day.dateString} ({day.dayOfWeek}) - {day.label}
                   </option>
                 ))}
+                <option value="unscheduled" className="bg-[#0c0c0e]">
+                  📥 暫存行程 (尚未確定日期 / 移入暫存區)
+                </option>
               </select>
             </div>
           )}

@@ -14,6 +14,7 @@ export interface ItineraryItem {
   id: string;
   tripId: string;
   date: string; // YYYY-MM-DD
+  isUnscheduled?: boolean; // True if item is stashed/unscheduled
   title: string;
   location: string;
   startMinutes: number; // minutes from midnight (e.g. 540 for 09:00)
